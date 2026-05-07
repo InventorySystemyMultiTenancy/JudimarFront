@@ -1,0 +1,372 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import CartDrawer from "../components/CartDrawer.jsx";
+import Navbar from "../components/Navbar.jsx";
+import ProductCustomizer from "../components/ProductCustomizer.jsx";
+import { useAuth } from "../hooks/useAuth.js";
+import { api } from "../lib/api.js";
+import { useTranslation } from "../context/I18nContext.jsx";
+
+const fmt = (value) =>
+  Number(value).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+
+const getProductPrice = (product) =>
+  Number(
+    product?.price ?? product?.basePrice ?? product?.sizes?.[0]?.price ?? 0,
+  );
+
+function tProductField(t, productId, field, fallback) {
+  const id = String(productId ?? "");
+  const lowerKey = `PRODUCT_${id}_${field}`;
+  const upperKey = `PRODUCT_${id.toUpperCase()}_${field}`;
+  return t(lowerKey, t(upperKey, fallback));
+}
+
+/* ─── Product Card ──────────────────────────────────────────── */
+function MenuCard({ product }) {
+  const [showCustomizer, setShowCustomizer] = useState(false);
+  const { t } = useTranslation();
+
+  const productName = tProductField(t, product.id, "NAME", product.name);
+  const productDesc = product.description
+    ? tProductField(t, product.id, "DESC", product.description)
+    : null;
+
+  const isEsgotado = product.stock === 0;
+
+  return (
+    <>
+      <article
+        className={`relative flex overflow-hidden rounded-2xl border border-[#2a2a38] bg-[#1a1a22] shadow-sm transition ${
+          isEsgotado
+            ? "cursor-not-allowed opacity-60"
+            : "cursor-pointer hover:border-amber-400/30 hover:shadow-md"
+        }`}
+        onClick={() => !isEsgotado && setShowCustomizer(true)}
+      >
+        {isEsgotado && (
+          <div className="absolute left-2 top-2 z-10 rounded-lg bg-red-600 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-widest text-white shadow">
+            {t("ESGOTADO", "Esgotado")}
+          </div>
+        )}
+        {product.imageUrl ? (
+          <img
+            src={product.imageUrl}
+            alt={productName}
+            className="h-28 w-28 shrink-0 object-cover sm:w-36"
+            onError={(e) => (e.currentTarget.style.display = "none")}
+          />
+        ) : (
+          <div className="flex h-28 w-28 shrink-0 items-center justify-center bg-[#12121a] text-3xl sm:w-36">
+            �️
+          </div>
+        )}
+
+        <div className="flex flex-1 flex-col justify-between p-3 sm:p-4">
+          <div>
+            <h3 className="font-display text-sm font-bold uppercase tracking-wide text-gray-100 line-clamp-1 sm:text-[0.92rem]">
+              {productName}
+            </h3>
+            {productDesc && (
+              <p className="mt-1 text-xs leading-relaxed text-gray-400 line-clamp-2">
+                {productDesc}
+              </p>
+            )}
+          </div>
+
+          <div className="mt-2 flex items-end gap-4">
+            <span className="text-sm font-bold text-amber-400">
+              {fmt(getProductPrice(product))}
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              {isEsgotado && (
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-300">
+                  {t("OUT_OF_STOCK", "Sem estoque")}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isEsgotado) setShowCustomizer(true);
+                }}
+                disabled={isEsgotado}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-lg font-bold shadow-sm transition ${
+                  isEsgotado
+                    ? "cursor-not-allowed bg-gray-600 text-gray-400"
+                    : "bg-amber-400 text-[#10151d] hover:bg-amber-300"
+                }`}
+                aria-label="Adicionar"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      {showCustomizer && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowCustomizer(false)}
+          />
+          <div className="relative z-10 w-full max-w-sm">
+            <ProductCustomizer
+              product={product}
+              addonsOptions={product.addons ?? []}
+              onClose={() => setShowCustomizer(false)}
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function CardapioPage() {
+  const [activeCategory, setActiveCategory] = useState("Todos");
+  const [search, setSearch] = useState("");
+  const { user } = useAuth();
+  const { t } = useTranslation();
+
+  const { data: mesaOrders = [] } = useQuery({
+    queryKey: ["mesa-orders"],
+    queryFn: async () => {
+      const res = await api.get("/mesa/orders");
+      return res.data?.data ?? [];
+    },
+    enabled: user?.role === "MESA",
+    refetchInterval: 30000,
+  });
+
+  const pendingTotal =
+    user?.role === "MESA"
+      ? mesaOrders
+          .filter(
+            (o) => o.paymentStatus !== "APROVADO" && o.status !== "CANCELADO",
+          )
+          .reduce((acc, o) => acc + Number(o.total), 0)
+      : 0;
+
+  const {
+    data: products = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const res = await api.get("/products");
+      return res.data?.data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: topProducts = [] } = useQuery({
+    queryKey: ["top-products"],
+    queryFn: async () => {
+      const res = await api.get("/products/top?limit=4");
+      return res.data?.data ?? [];
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const tCategory = (cat) => {
+    const key = `CAT_${(cat ?? "GERAL")
+      .toUpperCase()
+      .replace(/\s+/g, "_")
+      .replace(/[^A-Z0-9_]/g, "")}`;
+    return t(key, cat ?? "Geral");
+  };
+
+  const rawCategories = Array.from(
+    new Set(products.map((p) => p.category ?? "Geral").filter(Boolean)),
+  );
+
+  const categories = [
+    t("CARDAPIO_CAT_ALL", "Todos"),
+    ...rawCategories.map(tCategory),
+  ];
+
+  const categoryKeyMap = Object.fromEntries(
+    rawCategories.map((cat) => [tCategory(cat), cat]),
+  );
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const ALL_LABEL = t("CARDAPIO_CAT_ALL", "Todos");
+  const filtered =
+    activeCategory === ALL_LABEL || activeCategory === "Todos"
+      ? products
+      : products.filter(
+          (p) =>
+            (p.category ?? "Geral") ===
+            (categoryKeyMap[activeCategory] ?? activeCategory),
+        );
+  const searched = normalizedSearch
+    ? filtered.filter((product) =>
+        [product.name, product.description, product.category]
+          .filter(Boolean)
+          .some((value) => value.toLowerCase().includes(normalizedSearch)),
+      )
+    : filtered;
+
+  return (
+    <main className="min-h-screen bg-[#0f0f13] text-gray-100">
+      {/* Sticky Nav */}
+      <Navbar activeLink="cardapio" />
+
+      {/* Page header */}
+      <div className="border-b border-[#1e1e2a] bg-[#0f0f13] py-7 text-center">
+        <p className="font-display text-[0.65rem] uppercase tracking-[0.35em] text-amber-400">
+          {t("CARDAPIO_SINCE", "Hambúrgueres artesanais · Feitos na hora")}
+        </p>
+        <h1 className="mt-1 font-display text-3xl font-bold text-gray-100 sm:text-4xl">
+          {t("CARDAPIO_TITLE", "Nosso Cardápio")}
+        </h1>
+      </div>
+
+      {/* Category tabs */}
+      <div className="sticky top-[61px] z-20 overflow-x-auto border-b border-[#1e1e2a] bg-[#0f0f13] shadow-sm">
+        <div className="mx-auto flex max-w-7xl px-4 sm:px-8">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setActiveCategory(cat)}
+              className={`shrink-0 border-b-2 px-4 py-3.5 text-sm font-semibold transition-colors sm:px-5 ${
+                activeCategory === cat
+                  ? "border-amber-400 text-amber-400"
+                  : "border-transparent text-gray-400 hover:text-gray-200"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-8">
+        <div className="mt-1">
+          <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+            {t("CARDAPIO_SEARCH_LABEL", "Buscar no cardápio")}
+          </label>
+          <input
+            type="text"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t(
+              "CARDAPIO_SEARCH_PH",
+              "Ex: bife, frango, calabresa...",
+            )}
+            className="w-full rounded-2xl border border-[#2a2a38] bg-[#1a1a22] px-4 py-3 text-sm text-gray-200 outline-none transition focus:border-amber-400/40 placeholder:text-gray-500"
+          />
+        </div>
+      </section>
+
+      {/* Product grid */}
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+        {!isLoading && !isError && topProducts.length > 0 && (
+          <div className="mb-8">
+            <div className="mb-4 flex items-end justify-between gap-3">
+              <div>
+                <p className="font-display text-[0.65rem] uppercase tracking-[0.35em] text-amber-400">
+                  {t("CARDAPIO_TOP_LABEL", "Favoritos da casa")}
+                </p>
+                <h2 className="mt-1 font-display text-2xl text-gray-100">
+                  {t("CARDAPIO_TOP_TITLE", "Mais Pedidos")}
+                </h2>
+              </div>
+              <p className="text-xs text-gray-400">
+                {t("CARDAPIO_TOP_DESC", "Os combos que mais saem no momento")}
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {topProducts.map((product) => (
+                <MenuCard key={`top-${product.id}`} product={product} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {isLoading && (
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="h-28 animate-pulse rounded-2xl bg-[#1a1a22]"
+              />
+            ))}
+          </div>
+        )}
+
+        {isError && (
+          <p className="py-16 text-center text-gray-500">
+            {t(
+              "CARDAPIO_ERROR",
+              "Não foi possível carregar o cardápio. Tente novamente.",
+            )}
+          </p>
+        )}
+
+        {!isLoading && !isError && filtered.length === 0 && (
+          <p className="py-16 text-center text-gray-400">
+            {t("CARDAPIO_EMPTY_CAT", "Nenhum item nesta categoria.")}
+          </p>
+        )}
+
+        {!isLoading &&
+          !isError &&
+          filtered.length > 0 &&
+          searched.length === 0 && (
+            <p className="py-16 text-center text-gray-400">
+              {t("CARDAPIO_EMPTY_CAT", "Nenhum item nesta categoria.")}
+            </p>
+          )}
+
+        {!isLoading && !isError && searched.length > 0 && (
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {searched.map((product) => (
+              <MenuCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <footer className="border-t border-[#1e1e2a] py-6 text-center text-xs text-gray-500">
+        {t(
+          "FOOTER_COPYRIGHT",
+          "Judimar Bar & Restaurante © 1989 · Sabor que marca presença!",
+        )}
+      </footer>
+
+      {/* Banner fixo de pagamento pendente (só MESA) */}
+      {pendingTotal > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 p-3">
+          <Link
+            to="/mesa/checkout"
+            className="flex items-center justify-between gap-3 rounded-2xl bg-amber-500 px-5 py-4 shadow-2xl text-white font-semibold"
+          >
+            <span className="flex items-center gap-2 text-sm">
+              💳 {t("CARDAPIO_PAYMENT_PENDING", "Pagamento pendente")}
+            </span>
+            <span className="text-base font-bold">
+              {Number(pendingTotal).toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
+            </span>
+          </Link>
+        </div>
+      )}
+
+      <CartDrawer />
+    </main>
+  );
+}
+
+export default CardapioPage;

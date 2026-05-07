@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #333333;
+  background: #f4ebd0;
+  font-family: "Montserrat", "Inter", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #f4ebd0;
+  color: #333333;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+body.install-prompt-open {
+  padding-bottom: 6rem;
+}
