@@ -174,6 +174,9 @@ function TerminalChargeModal({ order, onClose }) {
       toast.success("Pagamento confirmado.");
       queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
       queryClient.invalidateQueries({ queryKey: ["atendente-mesa-orders"] });
+      queryClient.invalidateQueries({
+        queryKey: ["atendente-mesa-open-totals"],
+      });
       onClose();
     }
   }, [approved, onClose, polledOrder, queryClient]);
@@ -281,6 +284,15 @@ export default function AtendentePanel() {
     staleTime: 60_000,
   });
 
+  const { data: mesaOpenTotals = [] } = useQuery({
+    queryKey: ["atendente-mesa-open-totals"],
+    queryFn: async () => {
+      const res = await api.get("/mesas/open-totals");
+      return res.data?.data ?? [];
+    },
+    refetchInterval: 15_000,
+  });
+
   const { data: products = [], isLoading: isLoadingProducts } = useQuery({
     queryKey: ["atendente-products"],
     queryFn: async () => {
@@ -343,17 +355,14 @@ export default function AtendentePanel() {
 
   const mesaStatsById = useMemo(() => {
     const stats = new Map();
-    for (const order of orders) {
-      if (!order.mesaId) continue;
-      const current = stats.get(order.mesaId) ?? { active: 0, pending: 0 };
-      current.active += 1;
-      if (order.paymentStatus !== "APROVADO" && order.status !== "CANCELADO") {
-        current.pending += Number(order.total ?? 0);
-      }
-      stats.set(order.mesaId, current);
+    for (const row of mesaOpenTotals) {
+      stats.set(row.mesaId, {
+        active: row.activeCount,
+        pending: row.pendingTotal,
+      });
     }
     return stats;
-  }, [orders]);
+  }, [mesaOpenTotals]);
 
   const filteredProducts = useMemo(() => {
     const normalized = search.trim().toLowerCase();
@@ -396,6 +405,9 @@ export default function AtendentePanel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
       queryClient.invalidateQueries({ queryKey: ["atendente-mesa-orders"] });
+      queryClient.invalidateQueries({
+        queryKey: ["atendente-mesa-open-totals"],
+      });
       toast.success("Status atualizado!");
     },
     onError: () => toast.error("Erro ao atualizar status"),
@@ -420,6 +432,9 @@ export default function AtendentePanel() {
       setMesaNotes((prev) => ({ ...prev, [selectedMesaId]: "" }));
       queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
       queryClient.invalidateQueries({ queryKey: ["atendente-mesa-orders"] });
+      queryClient.invalidateQueries({
+        queryKey: ["atendente-mesa-open-totals"],
+      });
       toast.success("Pedido lançado para a mesa.");
     },
     onError: (error) => {
@@ -439,6 +454,9 @@ export default function AtendentePanel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
       queryClient.invalidateQueries({ queryKey: ["atendente-mesa-orders"] });
+      queryClient.invalidateQueries({
+        queryKey: ["atendente-mesa-open-totals"],
+      });
       toast.success("Pagamento baixado.");
     },
     onError: (error) => {
