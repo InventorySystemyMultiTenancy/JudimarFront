@@ -100,22 +100,18 @@ function LoginPage() {
   return (
     <main className="flex min-h-screen bg-white text-gray-900">
       {/* Left — hero */}
-      <div className="relative hidden overflow-hidden lg:flex lg:w-1/2">
-        <img
-          src="https://images.unsplash.com/photo-1544025162-d76594e8bb4f?w=900&q=80"
-          alt="Judimar Bar & Restaurante"
-          className="h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-rosso/80 to-black/60" />
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-12 text-white">
+      <div className="relative hidden overflow-hidden lg:flex lg:w-1/2 bg-gradient-to-br from-rosso via-amber-700 to-gray-700">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 p-12 text-white">
           <div className="text-center">
-            <img
-              src="/logo-judimar.png"
-              alt="Judimar Bar & Restaurante"
-              className="mx-auto h-28 w-auto drop-shadow-xl"
-            />
+            <div className="mx-auto h-32 w-32 rounded-2xl bg-white/95 p-4 shadow-2xl">
+              <img
+                src="/logo-judimar.png"
+                alt="Judimar Bar & Restaurante"
+                className="h-full w-full object-contain"
+              />
+            </div>
           </div>
-          <p className="font-script text-2xl italic text-white/90">
+          <p className="font-script text-3xl italic text-white drop-shadow-lg text-center">
             {t("LOGIN_TAGLINE_H", "Sabor que marca presença!")}
           </p>
         </div>
