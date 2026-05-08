@@ -60,59 +60,73 @@ const mapItemToApi = (item) => {
   }
 };
 
-function AttendantProductCard({ product, featured = false }) {
+function AttendantProductCard({
+  product,
+  featured = false,
+  showPhoto = false,
+}) {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const isSoldOut = product.stock === 0;
+  const imageUrl = product.imageUrl ?? product.image ?? product.photo ?? null;
 
   return (
     <>
       <article
-        className={`relative overflow-hidden rounded-2xl border bg-white p-4 shadow-sm transition ${
+        className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm transition ${
           isSoldOut
             ? "cursor-not-allowed opacity-55 border-gray-200"
             : "cursor-pointer border-gray-200 hover:border-secondary/40 hover:shadow-md"
         }`}
         onClick={() => !isSoldOut && setShowCustomizer(true)}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="font-display text-lg text-primary">
-              {product.name}
-            </h3>
-            {product.description ? (
-              <p className="mt-1 line-clamp-2 text-xs text-gray-500">
-                {product.description}
-              </p>
+        {showPhoto && imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={product.name}
+            className="h-36 w-full object-cover"
+          />
+        ) : null}
+        <div className={`p-4 ${showPhoto && imageUrl ? "pt-3" : ""}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="font-display text-lg text-primary">
+                {product.name}
+              </h3>
+              {product.description ? (
+                <p className="mt-1 line-clamp-2 text-xs text-gray-500">
+                  {product.description}
+                </p>
+              ) : null}
+            </div>
+            {featured ? (
+              <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
+                Destaque
+              </span>
             ) : null}
           </div>
-          {featured ? (
-            <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
-              Destaque
-            </span>
-          ) : null}
-        </div>
 
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-sm font-bold text-secondary">
-            {currency(
-              product.price ?? product.basePrice ?? product.sizes?.[0]?.price,
-            )}
-          </span>
-          <button
-            type="button"
-            disabled={isSoldOut}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (!isSoldOut) setShowCustomizer(true);
-            }}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-              isSoldOut
-                ? "bg-gray-200 text-gray-400"
-                : "bg-primary text-white hover:bg-secondary"
-            }`}
-          >
-            Adicionar
-          </button>
+          <div className="mt-4 flex items-center justify-between">
+            <span className="text-sm font-bold text-secondary">
+              {currency(
+                product.price ?? product.basePrice ?? product.sizes?.[0]?.price,
+              )}
+            </span>
+            <button
+              type="button"
+              disabled={isSoldOut}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!isSoldOut) setShowCustomizer(true);
+              }}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                isSoldOut
+                  ? "bg-gray-200 text-gray-400"
+                  : "bg-primary text-white hover:bg-secondary"
+              }`}
+            >
+              Adicionar
+            </button>
+          </div>
         </div>
       </article>
 
@@ -256,6 +270,7 @@ export default function AtendentePanel() {
   const [selectedMesaId, setSelectedMesaId] = useState("");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [showPhotos, setShowPhotos] = useState(false);
   const [mesaNotes, setMesaNotes] = useState({});
   const [chargingOrder, setChargingOrder] = useState(null);
 
@@ -671,13 +686,26 @@ export default function AtendentePanel() {
                     cobrança depois.
                   </p>
                 </div>
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Buscar item do cardápio"
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-secondary/50 sm:max-w-xs"
-                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowPhotos((v) => !v)}
+                    className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      showPhotos
+                        ? "border-secondary bg-secondary text-white"
+                        : "border-gray-300 bg-white text-gray-600 hover:border-secondary/40"
+                    }`}
+                  >
+                    🖼 {showPhotos ? "Ocultar fotos" : "Ver fotos"}
+                  </button>
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Buscar item do cardápio"
+                    className="w-full rounded-2xl border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-secondary/50 sm:max-w-xs"
+                  />
+                </div>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -723,6 +751,7 @@ export default function AtendentePanel() {
                       featured={topProducts.some(
                         (entry) => entry.id === product.id,
                       )}
+                      showPhoto={showPhotos}
                     />
                   ))}
                 </div>
