@@ -21,7 +21,7 @@ export default function AdminProductsHubPage() {
           Selecione o que deseja gerenciar.
         </p>
 
-        <div className="mt-8 grid gap-5 sm:grid-cols-2">
+        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <button
             type="button"
             onClick={() => navigate("/admin/produtos/lista")}
@@ -50,6 +50,23 @@ export default function AdminProductsHubPage() {
               </h2>
               <p className="mt-1 text-sm text-smoke">
                 Consultar saldo atual e registrar entradas ou saídas de estoque.
+              </p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/admin/produtos/comprar")}
+            className="group flex flex-col items-start gap-3 rounded-3xl border border-gold/20 bg-lacquer/70 p-6 text-left shadow-sm transition hover:border-gold/50 hover:shadow-md"
+          >
+            <span className="text-4xl">🛒</span>
+            <div>
+              <h2 className="font-display text-xl text-gold">
+                Produtos a Comprar
+              </h2>
+              <p className="mt-1 text-sm text-smoke">
+                Gere listas de reposição por estoque mínimo e confirme após
+                abastecer.
               </p>
             </div>
           </button>
