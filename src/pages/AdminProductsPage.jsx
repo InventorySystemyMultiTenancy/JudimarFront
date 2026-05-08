@@ -213,11 +213,6 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
       errs.singleCostPrice = "Custo inválido";
     }
     if (
-      form.stock !== "" &&
-      (isNaN(Number(form.stock)) || Number(form.stock) < 0)
-    ) {
-      errs.stock = "Estoque inválido";
-    }
     if (form.imageUrl && !/^https?:\/\/.+/.test(form.imageUrl))
       errs.imageUrl = "URL inválida (deve começar com http)";
     setErrors(errs);
@@ -241,7 +236,6 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
             : {}),
         },
       ],
-      ...(form.stock !== "" ? { stock: Number(form.stock) } : {}),
     };
     mutation.mutate(payload);
   };
@@ -370,7 +364,8 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
           </div>
 
           {/* Sale Price + Cost Price + Stock */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {/* Sale Price + Cost Price */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs uppercase tracking-widest text-smoke">
                 {t("ADMIN_PRODUCTS_SALE_PRICE", "Preço de venda *")}
@@ -419,26 +414,20 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
                 </p>
               )}
             </div>
-            <div>
-              <label className="mb-1 block text-xs uppercase tracking-widest text-smoke">
-                {t("ADMIN_PRODUCTS_STOCK", "Estoque")}
-              </label>
-              <input
-                type="number"
-                step="1"
-                min="0"
-                value={form.stock}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, stock: e.target.value }))
-                }
-                className="w-full rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gold/50"
-                placeholder="(opcional)"
-              />
-              {errors.stock && (
-                <p className="mt-0.5 text-xs text-red-400">{errors.stock}</p>
-              )}
-            </div>
           </div>
+          {isEdit && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+              Estoque atual:{" "}
+              <strong className="text-gray-900">{product?.stock ?? 0} un</strong>
+              {" · "}
+              <span className="text-xs text-gray-400">
+                Para ajustar o estoque use{" "}
+                <a href="/admin/produtos/estoque" className="text-amber-500 underline">
+                  Gerenciar Estoque
+                </a>.
+              </span>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button
@@ -717,10 +706,10 @@ function AdminProductsPage() {
         </div>
         <div className="flex items-center gap-3">
           <Link
-            to="/admin"
+            to="/admin/produtos"
             className="rounded-xl border border-gray-200 px-3 py-2 text-sm transition hover:border-gold/30"
           >
-            {t("NAV_PAINEL", "Painel")}
+            ← Produtos
           </Link>
           <button
             type="button"
