@@ -5,12 +5,12 @@ export default function AdminProductsHubPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#11161d] px-4 py-10">
+    <div className="min-h-screen bg-accent/30 px-4 py-10 text-gray-900">
       <div className="mx-auto max-w-2xl">
         <div className="mb-2 flex items-center gap-2">
           <Link
             to="/admin"
-            className="text-xs text-gold/60 transition hover:text-gold"
+            className="text-xs text-gold/70 transition hover:text-gold"
           >
             ← Painel Admin
           </Link>
@@ -25,7 +25,7 @@ export default function AdminProductsHubPage() {
           <button
             type="button"
             onClick={() => navigate("/admin/produtos/lista")}
-            className="group flex flex-col items-start gap-3 rounded-3xl border border-gold/20 bg-lacquer p-6 text-left shadow-lg transition hover:border-gold/50 hover:shadow-gold/10"
+            className="group flex flex-col items-start gap-3 rounded-3xl border border-gold/20 bg-lacquer/70 p-6 text-left shadow-sm transition hover:border-gold/50 hover:shadow-md"
           >
             <span className="text-4xl">🍽</span>
             <div>
@@ -41,7 +41,7 @@ export default function AdminProductsHubPage() {
           <button
             type="button"
             onClick={() => navigate("/admin/produtos/estoque")}
-            className="group flex flex-col items-start gap-3 rounded-3xl border border-gold/20 bg-lacquer p-6 text-left shadow-lg transition hover:border-gold/50 hover:shadow-gold/10"
+            className="group flex flex-col items-start gap-3 rounded-3xl border border-gold/20 bg-lacquer/70 p-6 text-left shadow-sm transition hover:border-gold/50 hover:shadow-md"
           >
             <span className="text-4xl">📦</span>
             <div>

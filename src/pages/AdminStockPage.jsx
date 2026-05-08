@@ -282,10 +282,10 @@ export default function AdminStockPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#11161d] px-4 py-10">
+    <div className="min-h-screen bg-accent/30 px-4 py-10 text-gray-900">
       <div className="mx-auto max-w-4xl">
         {/* Breadcrumb */}
-        <div className="mb-2 flex items-center gap-2 text-xs text-gold/60">
+        <div className="mb-2 flex items-center gap-2 text-xs text-gold/70">
           <Link to="/admin" className="transition hover:text-gold">
             Painel Admin
           </Link>
@@ -306,7 +306,7 @@ export default function AdminStockPage() {
             <p className="mt-1 text-sm text-smoke">
               Saldo atual de cada produto.{" "}
               {lowStockCount > 0 && (
-                <span className="font-semibold text-red-400">
+                <span className="font-semibold text-red-500">
                   {lowStockCount} produto(s) com estoque baixo (&lt; 5 un).
                 </span>
               )}
@@ -327,7 +327,7 @@ export default function AdminStockPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar produto..."
-            className="flex-1 rounded-2xl border border-gold/20 bg-lacquer px-4 py-2.5 text-sm text-white outline-none placeholder:text-smoke focus:border-gold/50"
+            className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-gold/50"
           />
         </div>
 
@@ -338,7 +338,7 @@ export default function AdminStockPage() {
             className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
               categoryFilter === ""
                 ? "bg-gold text-[#11161d]"
-                : "bg-lacquer text-smoke hover:text-gold"
+                : "border border-gray-200 bg-white text-smoke hover:border-gold/30 hover:text-gold"
             }`}
           >
             Todos
@@ -353,7 +353,7 @@ export default function AdminStockPage() {
               className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                 categoryFilter === cat
                   ? "bg-gold text-[#11161d]"
-                  : "bg-lacquer text-smoke hover:text-gold"
+                  : "border border-gray-200 bg-white text-smoke hover:border-gold/30 hover:text-gold"
               }`}
             >
               {cat}
@@ -367,7 +367,7 @@ export default function AdminStockPage() {
             Carregando...
           </div>
         ) : (
-          <div className="mt-6 overflow-hidden rounded-3xl border border-gold/20 bg-lacquer">
+          <div className="mt-6 overflow-hidden rounded-3xl border border-gold/20 bg-lacquer/70 shadow-sm">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gold/10 text-xs uppercase tracking-widest text-smoke">
@@ -385,7 +385,7 @@ export default function AdminStockPage() {
                   return (
                     <tr
                       key={p.id}
-                      className="border-b border-gold/5 transition last:border-0 hover:bg-gold/5"
+                      className="border-b border-gold/5 transition last:border-0 hover:bg-white/60"
                     >
                       <td className="flex items-center gap-3 px-5 py-3">
                         {p.imageUrl ? (
@@ -399,7 +399,7 @@ export default function AdminStockPage() {
                             🍽
                           </div>
                         )}
-                        <span className="font-semibold text-white">
+                        <span className="font-semibold text-gray-900">
                           {p.name}
                         </span>
                       </td>
@@ -413,8 +413,8 @@ export default function AdminStockPage() {
                         <span
                           className={`rounded-full px-3 py-1 text-xs font-bold ${
                             isLow
-                              ? "bg-red-900/40 text-red-400"
-                              : "bg-emerald-900/30 text-emerald-400"
+                              ? "bg-red-100 text-red-600"
+                              : "bg-emerald-100 text-emerald-600"
                           }`}
                         >
                           {stock} un
