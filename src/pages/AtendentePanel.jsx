@@ -255,6 +255,7 @@ export default function AtendentePanel() {
   const [now, setNow] = useState(Date.now());
   const [selectedMesaId, setSelectedMesaId] = useState("");
   const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [mesaNotes, setMesaNotes] = useState({});
   const [chargingOrder, setChargingOrder] = useState(null);
 
@@ -364,15 +365,30 @@ export default function AtendentePanel() {
     return stats;
   }, [mesaOpenTotals]);
 
+  const categories = useMemo(() => {
+    const seen = new Set();
+    const result = [];
+    for (const p of products) {
+      const cat = p.category ?? "";
+      if (cat && !seen.has(cat)) {
+        seen.add(cat);
+        result.push(cat);
+      }
+    }
+    return result;
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
     const normalized = search.trim().toLowerCase();
-    if (!normalized) return products;
     return products.filter((product) => {
+      if (selectedCategory && product.category !== selectedCategory)
+        return false;
+      if (!normalized) return true;
       const haystack =
         `${product.name} ${product.description ?? ""} ${product.category ?? ""}`.toLowerCase();
       return haystack.includes(normalized);
     });
-  }, [products, search]);
+  }, [products, search, selectedCategory]);
 
   const pendingMesaTotal = useMemo(
     () =>
@@ -665,13 +681,32 @@ export default function AtendentePanel() {
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                {topProducts.map((product) => (
-                  <span
-                    key={product.id}
-                    className="rounded-full bg-secondary/10 px-3 py-1 text-xs font-semibold text-secondary"
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory("")}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                    selectedCategory === ""
+                      ? "bg-primary text-white"
+                      : "bg-secondary/10 text-secondary hover:bg-secondary/20"
+                  }`}
+                >
+                  Todos
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() =>
+                      setSelectedCategory((prev) => (prev === cat ? "" : cat))
+                    }
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                      selectedCategory === cat
+                        ? "bg-primary text-white"
+                        : "bg-secondary/10 text-secondary hover:bg-secondary/20"
+                    }`}
                   >
-                    #{product.name}
-                  </span>
+                    {cat}
+                  </button>
                 ))}
               </div>
 
