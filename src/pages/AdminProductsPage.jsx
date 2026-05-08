@@ -212,7 +212,6 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
     ) {
       errs.singleCostPrice = "Custo inválido";
     }
-    if (
     if (form.imageUrl && !/^https?:\/\/.+/.test(form.imageUrl))
       errs.imageUrl = "URL inválida (deve começar com http)";
     setErrors(errs);
@@ -418,13 +417,19 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
           {isEdit && (
             <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
               Estoque atual:{" "}
-              <strong className="text-gray-900">{product?.stock ?? 0} un</strong>
+              <strong className="text-gray-900">
+                {product?.stock ?? 0} un
+              </strong>
               {" · "}
               <span className="text-xs text-gray-400">
                 Para ajustar o estoque use{" "}
-                <a href="/admin/produtos/estoque" className="text-amber-500 underline">
+                <a
+                  href="/admin/produtos/estoque"
+                  className="text-amber-500 underline"
+                >
                   Gerenciar Estoque
-                </a>.
+                </a>
+                .
               </span>
             </div>
           )}
