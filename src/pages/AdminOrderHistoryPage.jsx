@@ -122,6 +122,31 @@ function AdminOrderHistoryPage() {
       ),
   });
 
+  const {
+    mutate: markAsRefunded,
+    variables: refundingId,
+    isPending: isRefunding,
+  } = useMutation({
+    mutationFn: async (orderId) => {
+      await api.patch(`/orders/${orderId}/payment-status`, {
+        paymentStatus: "ESTORNADO",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-order-history"] });
+      toast.success(
+        t("ADMIN_HISTORY_REFUND_MARKED", "Estorno marcado como baixado"),
+      );
+    },
+    onError: () =>
+      toast.error(
+        t(
+          "ADMIN_HISTORY_REFUND_UPDATE_ERROR",
+          "Falha ao baixar estorno do pedido",
+        ),
+      ),
+  });
+
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-6 text-gray-900 sm:px-6">
       {/* Header */}
@@ -400,6 +425,18 @@ function AdminOrderHistoryPage() {
                         : t("ADMIN_HISTORY_MARK_PAID", "✓ Pago")}
                     </button>
                   )}
+                {needsRefundFlag && (
+                  <button
+                    type="button"
+                    disabled={isRefunding && refundingId === order.id}
+                    onClick={() => markAsRefunded(order.id)}
+                    className="shrink-0 rounded-xl bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {isRefunding && refundingId === order.id
+                      ? "..."
+                      : t("ADMIN_HISTORY_MARK_REFUNDED", "Baixar estorno")}
+                  </button>
+                )}
               </div>
 
               {/* Expanded details */}
