@@ -147,6 +147,18 @@ function AdminOrderHistoryPage() {
       ),
   });
 
+  const handleMarkAsRefunded = (orderId) => {
+    const shouldConfirm = window.confirm(
+      t(
+        "ADMIN_HISTORY_REFUND_CONFIRM",
+        "Confirmar baixa do estorno deste pedido?",
+      ),
+    );
+
+    if (!shouldConfirm) return;
+    markAsRefunded(orderId);
+  };
+
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-6 text-gray-900 sm:px-6">
       {/* Header */}
@@ -429,7 +441,7 @@ function AdminOrderHistoryPage() {
                   <button
                     type="button"
                     disabled={isRefunding && refundingId === order.id}
-                    onClick={() => markAsRefunded(order.id)}
+                    onClick={() => handleMarkAsRefunded(order.id)}
                     className="shrink-0 rounded-xl bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-red-700 disabled:opacity-50"
                   >
                     {isRefunding && refundingId === order.id
