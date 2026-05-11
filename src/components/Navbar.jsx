@@ -5,7 +5,6 @@ import { useCart } from "../context/CartContext.jsx";
 import { useAuth } from "../hooks/useAuth.js";
 import { api } from "../lib/api.js";
 import { useTranslation } from "../context/I18nContext.jsx";
-import LanguageSelector from "./LanguageSelector.jsx";
 
 const WHATSAPP_NUMBER = "5511971174080";
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}`;
@@ -174,8 +173,6 @@ export default function Navbar({ activeLink }) {
                 💳 {t("NAV_PAGAR", "Pagar")}
               </Link>
             )}
-
-            <LanguageSelector />
 
             {/* Cart */}
             <button
