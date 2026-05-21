@@ -12,9 +12,9 @@ function MesaAccessPage() {
   const [status, setStatus] = useState(token ? "loading" : "error"); // loading | error
 
   useEffect(() => {
-    // Se já está logado como MESA, vai direto para o cardápio
+    // Se já está logado como MESA, vai direto para o cardápio da mesa
     if (isAuthenticated && user?.role === "MESA") {
-      navigate("/cardapio", { replace: true });
+      navigate("/cardapio-mesa", { replace: true });
       return;
     }
 
