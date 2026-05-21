@@ -11,7 +11,7 @@ const fmt = (value) =>
 const getProductPrice = (product) =>
   Number(product?.price ?? product?.sizes?.[0]?.price ?? 0);
 
-function MenuCard({ product }) {
+function MenuCard({ product, onClick }) {
   const { t } = useTranslation();
   const name = t(`PRODUCT_${String(product.id ?? "")}_NAME`, product.name);
   const description = t(
@@ -20,26 +20,31 @@ function MenuCard({ product }) {
   );
   const imageUrl = product.imageUrl || product.image || product.photo || "";
   const isOutOfStock = product.stock === 0;
+  const clickable = Boolean(imageUrl);
 
   return (
     <article
+      onClick={() => clickable && onClick(product)}
       className={`flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-[#fff9f0] p-4 shadow-sm transition ${
         isOutOfStock
           ? "opacity-60"
           : "hover:shadow-lg hover:shadow-slate-200/40"
-      }`}
+      } ${clickable ? "cursor-pointer" : "cursor-default"}`}
     >
       <div className="mb-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={name}
-              className="h-20 w-20 rounded-3xl object-cover"
-              onError={(event) => {
-                event.currentTarget.style.display = "none";
-              }}
-            />
+            <div className="relative">
+              <img
+                src={imageUrl}
+                alt={name}
+                className="h-20 w-20 rounded-3xl object-cover"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+              <div className="pointer-events-none absolute inset-0 rounded-3xl bg-slate-950/0 transition hover:bg-slate-950/10" />
+            </div>
           ) : (
             <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-slate-100 text-2xl text-slate-400">
               🍽
@@ -65,6 +70,11 @@ function MenuCard({ product }) {
           {t("ESGOTADO", "Esgotado")}
         </div>
       )}
+      {clickable && (
+        <p className="mt-4 text-xs text-slate-500">
+          {t("MESA_CARDAPIO_CLICK_IMAGE", "Clique para ver a imagem maior")}
+        </p>
+      )}
     </article>
   );
 }
@@ -74,6 +84,7 @@ function MesaCardapioPage() {
   const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState("Todos");
   const [search, setSearch] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
@@ -163,11 +174,64 @@ function MesaCardapioPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {filtered.map((product) => (
-              <MenuCard key={product.id} product={product} />
+              <MenuCard
+                key={product.id}
+                product={product}
+                onClick={setSelectedProduct}
+              />
             ))}
           </div>
         )}
       </section>
+
+      {selectedProduct && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4"
+          onClick={() => setSelectedProduct(null)}
+        >
+          <div
+            className="relative max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-[2rem] bg-[#fff9f0] shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setSelectedProduct(null)}
+              className="absolute right-4 top-4 rounded-full bg-slate-950/80 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-900"
+            >
+              {t("FECHAR", "Fechar")}
+            </button>
+            <img
+              src={
+                selectedProduct.imageUrl ||
+                selectedProduct.image ||
+                selectedProduct.photo ||
+                ""
+              }
+              alt={t(
+                `PRODUCT_${String(selectedProduct.id ?? "")}_NAME`,
+                selectedProduct.name,
+              )}
+              className="h-[70vh] w-full object-contain bg-slate-100"
+            />
+            <div className="space-y-3 p-6">
+              <h2 className="text-2xl font-semibold text-slate-950">
+                {t(
+                  `PRODUCT_${String(selectedProduct.id ?? "")}_NAME`,
+                  selectedProduct.name,
+                )}
+              </h2>
+              {selectedProduct.description && (
+                <p className="text-sm leading-relaxed text-slate-700">
+                  {t(
+                    `PRODUCT_${String(selectedProduct.id ?? "")}_DESC`,
+                    selectedProduct.description,
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="fixed bottom-4 right-4 z-40">
         <ChamarGarcomButton />
