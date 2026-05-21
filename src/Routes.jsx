@@ -19,6 +19,8 @@ import LoginPage from "./pages/LoginPage.jsx";
 import MotoboyPage from "./pages/MotoboyPage.jsx";
 import MesaAccessPage from "./pages/MesaAccessPage.jsx";
 import MesaCheckoutPage from "./pages/MesaCheckoutPage.jsx";
+import MesaCardapioPage from "./pages/MesaCardapioPage.jsx";
+import AdminMesaCardapioPage from "./pages/AdminMesaCardapioPage.jsx";
 import PrivateRoute from "./routes/PrivateRoute.js";
 
 function AppRoutes() {
@@ -32,8 +34,9 @@ function AppRoutes() {
       {/* Acesso de mesa via QR code (público) */}
       <Route path="/mesa/:token" element={<MesaAccessPage />} />
 
-      {/* Checkout da mesa (autenticado como MESA) */}
+      {/* Página somente leitura do cardápio para mesa */}
       <Route element={<PrivateRoute allowedRoles={["MESA"]} />}>
+        <Route path="/mesa" element={<MesaCardapioPage />} />
         <Route path="/mesa/checkout" element={<MesaCheckoutPage />} />
       </Route>
 
@@ -84,6 +87,10 @@ function AppRoutes() {
         <Route path="/admin/historico" element={<AdminOrderHistoryPage />} />
         <Route path="/admin/usuarios" element={<AdminUsersPage />} />
         <Route path="/admin/mesas" element={<AdminMesasPage />} />
+        <Route
+          path="/admin/cardapio-mesa"
+          element={<AdminMesaCardapioPage />}
+        />
       </Route>
 
       <Route
