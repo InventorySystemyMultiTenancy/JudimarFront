@@ -211,7 +211,7 @@ function MesaCardapioPage() {
                 `PRODUCT_${String(selectedProduct.id ?? "")}_NAME`,
                 selectedProduct.name,
               )}
-              className="h-[70vh] w-full object-contain bg-slate-100"
+              className="max-h-[85vh] w-full object-contain bg-slate-100"
             />
             <div className="space-y-3 p-6">
               <h2 className="text-2xl font-semibold text-slate-950">
