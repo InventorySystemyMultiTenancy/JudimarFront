@@ -35,7 +35,7 @@ function MesaAccessPage() {
             mesaNumber: mesa.number,
           },
         });
-        navigate("/mesa", { replace: true });
+        navigate("/cardapio-mesa", { replace: true });
       })
       .catch(() => setStatus("error"));
   }, [isAuthenticated, login, navigate, token, user?.role]);

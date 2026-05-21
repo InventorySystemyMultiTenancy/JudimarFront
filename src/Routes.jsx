@@ -33,10 +33,11 @@ function AppRoutes() {
 
       {/* Acesso de mesa via QR code (público) */}
       <Route path="/mesa/:token" element={<MesaAccessPage />} />
+      <Route path="/cardapio-mesa/:token" element={<MesaAccessPage />} />
 
-      {/* Página somente leitura do cardápio para mesa */}
+      {/* Página somente leitura do cardápio para mesas — rota separada da sessão de pedidos /mesa */}
       <Route element={<PrivateRoute allowedRoles={["MESA"]} />}>
-        <Route path="/mesa" element={<MesaCardapioPage />} />
+        <Route path="/cardapio-mesa" element={<MesaCardapioPage />} />
         <Route path="/mesa/checkout" element={<MesaCheckoutPage />} />
       </Route>
 

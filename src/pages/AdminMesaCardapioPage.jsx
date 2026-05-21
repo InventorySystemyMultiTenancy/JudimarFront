@@ -93,7 +93,7 @@ function AdminMesaCardapioPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {mesas.map((mesa) => {
-              const url = `${window.location.origin}/mesa/${mesa.accessToken}`;
+              const url = `${window.location.origin}/cardapio-mesa/${mesa.accessToken}`;
               return (
                 <div
                   key={mesa.id}
