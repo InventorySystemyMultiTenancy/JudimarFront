@@ -18,24 +18,43 @@ function MenuCard({ product }) {
     `PRODUCT_${String(product.id ?? "")}_DESC`,
     product.description ?? "",
   );
+  const imageUrl = product.imageUrl || product.image || product.photo || "";
   const isOutOfStock = product.stock === 0;
 
   return (
     <article
-      className={`flex flex-col overflow-hidden rounded-3xl border bg-white p-4 shadow-sm transition ${
-        isOutOfStock ? "opacity-60" : "hover:shadow-md"
+      className={`flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-[#fff9f0] p-4 shadow-sm transition ${
+        isOutOfStock
+          ? "opacity-60"
+          : "hover:shadow-lg hover:shadow-slate-200/40"
       }`}
     >
       <div className="mb-4 flex items-center justify-between gap-4">
-        <div>
-          <h3 className="font-display text-base font-semibold text-gray-900">
-            {name}
-          </h3>
-          {description && (
-            <p className="mt-2 text-sm leading-relaxed text-gray-600 line-clamp-3">
-              {description}
-            </p>
+        <div className="flex items-center gap-4">
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={name}
+              className="h-20 w-20 rounded-3xl object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : (
+            <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-slate-100 text-2xl text-slate-400">
+              🍽
+            </div>
           )}
+          <div>
+            <h3 className="font-display text-base font-semibold text-gray-900">
+              {name}
+            </h3>
+            {description && (
+              <p className="mt-2 text-sm leading-relaxed text-gray-600 line-clamp-3">
+                {description}
+              </p>
+            )}
+          </div>
         </div>
         <span className="text-sm font-semibold text-secondary">
           {fmt(getProductPrice(product))}
@@ -90,15 +109,15 @@ function MesaCardapioPage() {
     : filteredByCategory;
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="border-b border-slate-200 bg-primary py-8 text-center text-white">
-        <p className="text-xs uppercase tracking-[0.25em] text-white/70">
+    <main className="min-h-screen bg-[#f4e7d3] text-slate-900">
+      <div className="border-b border-slate-200 bg-[#dac2a1] py-10 text-center text-slate-950 shadow-sm shadow-slate-200/30">
+        <p className="text-xs uppercase tracking-[0.25em] text-slate-800/70">
           {t("MESA_CARDAPIO_SUBTITLE", "Cardápio da mesa")}
         </p>
         <h1 className="mt-3 text-3xl font-bold sm:text-4xl">
           {t("MESA_CARDAPIO_TITLE", "Veja nosso cardápio")}
         </h1>
-        <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-white/80">
+        <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-800/80">
           {t(
             "MESA_CARDAPIO_DESCRIPTION",
             "Acesse e veja os pratos disponíveis. Aqui não é possível adicionar ao carrinho — apenas visualizar e chamar o atendente.",
@@ -117,7 +136,7 @@ function MesaCardapioPage() {
                 className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
                   activeCategory === category
                     ? "border-secondary bg-secondary/10 text-secondary"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                    : "border-slate-200 bg-[#fff7ed] text-slate-900 hover:border-slate-300"
                 }`}
               >
                 {category}
@@ -132,7 +151,7 @@ function MesaCardapioPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t("MESA_CARDAPIO_SEARCH", "Buscar no cardápio...")}
-              className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-secondary/60 focus:ring-2 focus:ring-secondary/20 sm:w-72"
+              className="w-full rounded-full border border-slate-200 bg-[#fff7ed] px-4 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-secondary/60 focus:ring-2 focus:ring-secondary/20 sm:w-72"
             />
           </label>
         </div>
