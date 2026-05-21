@@ -31,39 +31,37 @@ function MenuCard({ product, onClick }) {
           : "hover:shadow-lg hover:shadow-slate-200/40"
       } ${clickable ? "cursor-pointer" : "cursor-default"}`}
     >
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          {imageUrl ? (
-            <div className="relative">
-              <img
-                src={imageUrl}
-                alt={name}
-                className="h-20 w-20 rounded-3xl object-cover"
-                onError={(event) => {
-                  event.currentTarget.style.display = "none";
-                }}
-              />
-              <div className="pointer-events-none absolute inset-0 rounded-3xl bg-slate-950/0 transition hover:bg-slate-950/10" />
-            </div>
-          ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-slate-100 text-2xl text-slate-400">
-              🍽
-            </div>
-          )}
-          <div>
-            <h3 className="font-display text-base font-semibold text-gray-900">
-              {name}
-            </h3>
-            {description && (
-              <p className="mt-2 text-sm leading-relaxed text-gray-600 line-clamp-3">
-                {description}
-              </p>
-            )}
+      <div className="mb-4 flex items-start gap-4">
+        {imageUrl ? (
+          <div className="relative">
+            <img
+              src={imageUrl}
+              alt={name}
+              className="h-20 w-20 rounded-3xl object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+            <div className="pointer-events-none absolute inset-0 rounded-3xl bg-slate-950/0 transition hover:bg-slate-950/10" />
           </div>
+        ) : (
+          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-slate-100 text-2xl text-slate-400">
+            🍽
+          </div>
+        )}
+        <div className="flex-1">
+          <h3 className="font-display text-base font-semibold text-gray-900">
+            {name}
+          </h3>
+          {description && (
+            <p className="mt-2 text-sm leading-relaxed text-gray-600 line-clamp-3">
+              {description}
+            </p>
+          )}
+          <span className="mt-3 block text-sm font-semibold text-secondary">
+            {fmt(getProductPrice(product))}
+          </span>
         </div>
-        <span className="text-sm font-semibold text-secondary">
-          {fmt(getProductPrice(product))}
-        </span>
       </div>
       {isOutOfStock && (
         <div className="rounded-2xl bg-red-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-red-700">
