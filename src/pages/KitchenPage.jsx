@@ -181,6 +181,7 @@ function OrderCard({
   assigningMotoboy,
   onConfirmDelivery,
   confirmingDelivery,
+  largeMode = false,
 }) {
   const { t } = useTranslation();
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -228,28 +229,44 @@ function OrderCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-2xl font-black uppercase tracking-wide text-gray-900">
+          <p
+            className={`font-black uppercase tracking-wide text-gray-900 ${
+              largeMode ? "text-2xl" : "text-lg"
+            }`}
+          >
             #{order.id.slice(-6).toUpperCase()}
           </p>
-          <p className="mt-1 text-lg font-black text-gray-950">
+          <p
+            className={`mt-1 font-black text-gray-950 ${
+              largeMode ? "text-lg" : "text-base"
+            }`}
+          >
             {order.mesa
               ? order.mesa.name
               : (order.user?.name ?? t("CLIENT_DASHBOARD_CLIENT", "Cliente"))}
           </p>
-          <p className="text-xl font-bold text-gray-700">
+          <p
+            className={`font-bold text-gray-700 ${
+              largeMode ? "text-xl" : "text-sm"
+            }`}
+          >
             {formatTime(order.createdAt)}
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
           <span
-            className={`shrink-0 rounded-xl px-3 py-2 text-base font-black ${
+            className={`shrink-0 rounded-xl font-black ${
+              largeMode ? "px-3 py-2 text-base" : "px-2 py-1 text-xs"
+            } ${
               STAGE_BADGE[order.status] ?? "bg-gray-200 text-gray-900"
             }`}
           >
             {order.status.replace(/_/g, " ")}
           </span>
           <span
-            className={`rounded-xl px-3 py-1.5 text-sm font-black ${
+            className={`rounded-xl font-black ${
+              largeMode ? "px-3 py-1.5 text-sm" : "px-2 py-1 text-xs"
+            } ${
               order.mesa
                 ? "bg-amber-100 text-amber-700"
                 : order.isPickup
@@ -264,7 +281,11 @@ function OrderCard({
                 : `🛵 ${t("KITCHEN_DELIVERY", "Entrega")}`}
           </span>
           {isPaymentPending && !onConfirmPayment && (
-            <span className="rounded-xl bg-amber-100 px-3 py-1.5 text-sm font-black text-amber-700">
+            <span
+              className={`rounded-xl bg-amber-100 font-black text-amber-700 ${
+                largeMode ? "px-3 py-1.5 text-sm" : "px-2 py-1 text-xs"
+              }`}
+            >
               💰 {t("KITCHEN_PAYMENT_PENDING", "Pag. pendente")}
             </span>
           )}
@@ -286,10 +307,16 @@ function OrderCard({
         {kitchenItems.map((item) => (
           <li
             key={item.id}
-            className="rounded-2xl border border-gray-200 bg-white/80 p-3"
+            className={`rounded-2xl border border-gray-200 bg-white/80 ${
+              largeMode ? "p-3" : "p-2"
+            }`}
           >
-            <div className="flex gap-4">
-              <div className="h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
+            <div className={largeMode ? "flex gap-4" : "flex gap-3"}>
+              <div
+                className={`shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 ${
+                  largeMode ? "h-28 w-28" : "h-20 w-20"
+                }`}
+              >
                 {getProductImage(item) ? (
                   <img
                     src={getProductImage(item)}
@@ -303,16 +330,28 @@ function OrderCard({
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <span className="block text-2xl font-black leading-tight text-gray-950">
+                <span
+                  className={`block font-black leading-tight text-gray-950 ${
+                    largeMode ? "text-2xl" : "text-lg"
+                  }`}
+                >
                   {item.product?.name ?? t("CLIENT_DASHBOARD_ITEM", "Item")}
                 </span>
-                <span className="mt-2 inline-flex rounded-xl bg-gray-900 px-3 py-1 text-2xl font-black text-white">
+                <span
+                  className={`mt-2 inline-flex rounded-xl bg-gray-900 font-black text-white ${
+                    largeMode ? "px-3 py-1 text-2xl" : "px-2 py-0.5 text-lg"
+                  }`}
+                >
                   QTD {item.quantity}
                 </span>
               </div>
             </div>
             {item.notes && (
-              <p className="mt-2 rounded-xl border-2 border-red-700 bg-red-600 px-3 py-2 text-base font-black uppercase leading-snug text-white shadow-sm">
+              <p
+                className={`mt-2 rounded-xl border-2 border-red-700 bg-red-600 font-black uppercase leading-snug text-white shadow-sm ${
+                  largeMode ? "px-3 py-2 text-base" : "px-2 py-1.5 text-sm"
+                }`}
+              >
                 ⚠ {item.notes}
               </p>
             )}
@@ -331,12 +370,20 @@ function OrderCard({
 
       {/* Payment pending column actions */}
       {onConfirmPayment && (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div
+          className={`mt-5 grid gap-3 ${
+            largeMode ? "sm:grid-cols-2" : "grid-cols-2"
+          }`}
+        >
           <button
             type="button"
             disabled={confirmingPayment}
             onClick={() => onConfirmPayment(order.id)}
-            className="min-h-16 rounded-2xl bg-green-600 px-4 py-4 text-lg font-black text-white transition hover:bg-green-700 disabled:opacity-50"
+            className={`rounded-2xl bg-green-600 font-black text-white transition hover:bg-green-700 disabled:opacity-50 ${
+              largeMode
+                ? "min-h-16 px-4 py-4 text-lg"
+                : "min-h-12 px-3 py-3 text-sm"
+            }`}
           >
             {confirmingPayment
               ? "..."
@@ -346,7 +393,11 @@ function OrderCard({
             type="button"
             disabled={confirmingPayment}
             onClick={() => onPayLater(order.id)}
-            className="min-h-16 rounded-2xl border-2 border-amber-500 bg-amber-50 px-4 py-4 text-lg font-black text-amber-900 transition hover:bg-amber-100 disabled:opacity-50"
+            className={`rounded-2xl border-2 border-amber-500 bg-amber-50 font-black text-amber-900 transition hover:bg-amber-100 disabled:opacity-50 ${
+              largeMode
+                ? "min-h-16 px-4 py-4 text-lg"
+                : "min-h-12 px-3 py-3 text-sm"
+            }`}
           >
             {confirmingPayment
               ? "..."
@@ -361,7 +412,11 @@ function OrderCard({
           type="button"
           disabled={advancing}
           onClick={() => onAdvance(order.id, nextStatus)}
-          className="mt-5 min-h-20 w-full rounded-2xl bg-green-600 px-4 py-5 text-2xl font-black uppercase text-white transition hover:bg-green-700 disabled:opacity-50"
+          className={`mt-5 w-full rounded-2xl bg-green-600 font-black uppercase text-white transition hover:bg-green-700 disabled:opacity-50 ${
+            largeMode
+              ? "min-h-20 px-4 py-5 text-2xl"
+              : "min-h-14 px-3 py-3 text-base"
+          }`}
         >
           {advanceLabel}
         </button>
@@ -1009,6 +1064,7 @@ function KitchenPage() {
                     onAdvance={(orderId, status) =>
                       advance({ orderId, status })
                     }
+                    largeMode
                   />
                 ))}
               </div>
@@ -1363,7 +1419,6 @@ function KitchenPage() {
                                 setPaymentStatus({
                                   orderId,
                                   paymentStatus: "PENDENTE",
-                                  advanceTo: "PREPARANDO",
                                 })
                             : undefined
                         }
