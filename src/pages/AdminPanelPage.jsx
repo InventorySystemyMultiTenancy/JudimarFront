@@ -352,6 +352,23 @@ function AdminPanelPage() {
             </p>
           </div>
         </Link>
+
+        <Link
+          to="/caixa"
+          className="group flex items-start gap-4 rounded-2xl border border-gold/20 bg-lacquer/70 p-5 transition hover:border-gold/50 hover:shadow-md"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/15 text-2xl">
+            R$
+          </span>
+          <div>
+            <h2 className="font-semibold text-gray-900 group-hover:text-gold">
+              Caixa
+            </h2>
+            <p className="mt-0.5 text-xs text-smoke">
+              Baixar pagamentos pendentes de mesas, comandas e entregas
+            </p>
+          </div>
+        </Link>
       </div>
 
       {isLoading ? (

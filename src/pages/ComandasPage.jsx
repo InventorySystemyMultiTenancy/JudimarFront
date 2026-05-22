@@ -144,14 +144,6 @@ export default function ComandasPage() {
       toast.error(err?.response?.data?.error?.message ?? "Erro ao criar."),
   });
 
-  const regenToken = useMutation({
-    mutationFn: async (id) => api.post(`/comandas/${id}/regenerar-token`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["comandas"] });
-      toast.success("QR atualizado.");
-    },
-  });
-
   const createOrder = useMutation({
     mutationFn: async () =>
       api.post(`/comandas/${selectedId}/orders`, {
@@ -297,23 +289,14 @@ export default function ComandasPage() {
                     <strong>{currency(stats?.pendingTotal ?? 0)}</strong>
                   </p>
                 </button>
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3">
                   <button
                     type="button"
                     onClick={() => setQrComanda(comanda)}
-                    className="flex-1 rounded-xl border border-gold/30 px-3 py-2 text-xs font-bold text-gold"
+                    className="w-full rounded-xl border border-gold/30 px-3 py-2 text-xs font-bold text-gold"
                   >
                     QR Code
                   </button>
-                  {isAdmin ? (
-                    <button
-                      type="button"
-                      onClick={() => regenToken.mutate(comanda.id)}
-                      className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold text-gray-600"
-                    >
-                      Novo QR
-                    </button>
-                  ) : null}
                 </div>
               </article>
             );

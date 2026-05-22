@@ -1,6 +1,8 @@
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { api } from "../lib/api.js";
+import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
 
 const currency = (value) =>
   Number(value || 0).toLocaleString("pt-BR", {
@@ -10,6 +12,7 @@ const currency = (value) =>
 
 export default function ComandaSummaryPage() {
   const { token } = useParams();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["comanda-summary", token],
@@ -18,6 +21,67 @@ export default function ComandaSummaryPage() {
     enabled: Boolean(token),
     refetchInterval: 20_000,
   });
+
+  const markPaid = useMutation({
+    mutationFn: async ({ orderId, paymentMethod }) =>
+      api.patch(`/orders/${orderId}/mark-paid`, { paymentMethod }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["comanda-summary", token] });
+      queryClient.invalidateQueries({ queryKey: ["caixa-pending-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["comandas-open-totals"] });
+      toast.success("Pagamento baixado.");
+    },
+    onError: (error) =>
+      toast.error(
+        error?.response?.data?.error?.message ?? "Erro ao baixar pagamento.",
+      ),
+  });
+
+  const markAllPaid = useMutation({
+    mutationFn: async ({ orderIds, paymentMethod }) =>
+      Promise.all(
+        orderIds.map((orderId) =>
+          api.patch(`/orders/${orderId}/mark-paid`, { paymentMethod }),
+        ),
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["comanda-summary", token] });
+      queryClient.invalidateQueries({ queryKey: ["caixa-pending-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["comandas-open-totals"] });
+      toast.success("Comanda baixada.");
+    },
+    onError: (error) =>
+      toast.error(
+        error?.response?.data?.error?.message ?? "Erro ao baixar comanda.",
+      ),
+  });
+
+  const handleMarkPaid = async (order) => {
+    const paymentMethod = await askPaymentMethod({
+      title: "Dar baixa / pago",
+      text: `Pedido ${order.id.slice(-6).toUpperCase()} - ${currency(order.total)}`,
+    });
+    if (paymentMethod) {
+      markPaid.mutate({ orderId: order.id, paymentMethod });
+    }
+  };
+
+  const handleMarkAllPaid = async () => {
+    const pendingOrders =
+      data?.orders?.filter((order) => order.paymentStatus !== "APROVADO") ?? [];
+    if (!pendingOrders.length) return;
+
+    const paymentMethod = await askPaymentMethod({
+      title: "Fechar comanda",
+      text: `Total em aberto: ${currency(data.pendingTotal)}`,
+    });
+    if (paymentMethod) {
+      markAllPaid.mutate({
+        orderIds: pendingOrders.map((order) => order.id),
+        paymentMethod,
+      });
+    }
+  };
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-4 py-6 text-gray-900 sm:px-8">
@@ -73,6 +137,16 @@ export default function ComandaSummaryPage() {
                 </p>
               </div>
             </div>
+            {data.pendingOrdersCount > 0 ? (
+              <button
+                type="button"
+                onClick={handleMarkAllPaid}
+                disabled={markAllPaid.isPending}
+                className="mt-5 w-full rounded-2xl bg-green-600 px-4 py-4 text-lg font-black uppercase text-white disabled:opacity-50"
+              >
+                Dar baixa em tudo
+              </button>
+            ) : null}
           </section>
 
           <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -126,7 +200,7 @@ export default function ComandaSummaryPage() {
                             <strong>{item.quantity}x</strong>{" "}
                             {item.product?.name ?? "Item"}
                           </span>
-                          <span className="font-bold">
+                      <span className="font-bold">
                             {currency(item.totalPrice)}
                           </span>
                         </li>
@@ -140,6 +214,16 @@ export default function ComandaSummaryPage() {
                     <p className="mt-4 border-t border-gray-100 pt-3 text-right text-lg font-black text-primary">
                       Total {currency(order.total)}
                     </p>
+                    {order.paymentStatus !== "APROVADO" ? (
+                      <button
+                        type="button"
+                        onClick={() => handleMarkPaid(order)}
+                        disabled={markPaid.isPending || markAllPaid.isPending}
+                        className="mt-3 w-full rounded-xl bg-green-600 px-3 py-3 text-sm font-black uppercase text-white disabled:opacity-50"
+                      >
+                        Dar baixa neste pedido
+                      </button>
+                    ) : null}
                   </article>
                 ))}
               </div>
