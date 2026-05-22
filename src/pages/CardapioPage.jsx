@@ -298,7 +298,13 @@ function CardapioPage() {
       )
     : filtered;
 
+  const dailyProducts = products.filter(
+    (product) =>
+      Array.isArray(product.availableDays) && product.availableDays.length > 0,
+  );
   const topIds = new Set(topProducts.map((p) => p.id));
+  const showHomeSections =
+    normalizedSearch === "" && activeCategory === ALL_LABEL;
 
   return (
     <main className="min-h-screen bg-accent font-body text-text-main">
@@ -371,12 +377,41 @@ function CardapioPage() {
 
       {/* Products */}
       <section className="mx-auto max-w-7xl px-4 py-6 sm:px-8">
+        {/* Pratos do dia */}
+        {!isLoading &&
+          !isError &&
+          dailyProducts.length > 0 &&
+          showHomeSections && (
+            <div className="mb-8">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="h-px flex-1 bg-border-soft" />
+                <div className="text-center">
+                  <p className="font-body text-[0.65rem] uppercase tracking-[0.3em] text-secondary">
+                    {t("CARDAPIO_DAILY_LABEL", "Especial de hoje")}
+                  </p>
+                  <h2 className="font-display text-xl font-bold text-primary">
+                    {t("CARDAPIO_DAILY_TITLE", "Pratos do Dia")}
+                  </h2>
+                </div>
+                <div className="h-px flex-1 bg-border-soft" />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {dailyProducts.map((product) => (
+                  <MenuCard
+                    key={`daily-${product.id}`}
+                    product={product}
+                    featured={topIds.has(product.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
         {/* Destaques */}
         {!isLoading &&
           !isError &&
           topProducts.length > 0 &&
-          normalizedSearch === "" &&
-          activeCategory === ALL_LABEL && (
+          showHomeSections && (
             <div className="mb-8">
               <div className="mb-4 flex items-center gap-3">
                 <div className="h-px flex-1 bg-border-soft" />

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api.js";
-import { useAuth } from "../hooks/useAuth.js";
 import { useTranslation } from "../context/I18nContext.jsx";
 import ChamarGarcomButton from "../components/ChamarGarcomButton.jsx";
 
@@ -73,7 +72,6 @@ function MenuCard({ product, onClick }) {
 
 function MesaCardapioPage() {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState("Todos");
   const [search, setSearch] = useState("");
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -110,6 +108,12 @@ function MesaCardapioPage() {
           .some((value) => value.toLowerCase().includes(normalizedSearch)),
       )
     : filteredByCategory;
+  const dailyProducts = products.filter(
+    (product) =>
+      Array.isArray(product.availableDays) && product.availableDays.length > 0,
+  );
+  const showDailyProducts =
+    !isLoading && normalizedSearch === "" && activeCategory === ALL_LABEL;
 
   return (
     <main className="min-h-screen bg-[#f4e7d3] text-slate-900">
@@ -164,15 +168,43 @@ function MesaCardapioPage() {
             {t("LOADING", "Carregando...")}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((product) => (
-              <MenuCard
-                key={product.id}
-                product={product}
-                onClick={setSelectedProduct}
-              />
-            ))}
-          </div>
+          <>
+            {showDailyProducts && dailyProducts.length > 0 && (
+              <div className="mb-8">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-slate-300" />
+                  <div className="text-center">
+                    <p className="text-[0.65rem] uppercase tracking-[0.3em] text-secondary">
+                      {t("CARDAPIO_DAILY_LABEL", "Especial de hoje")}
+                    </p>
+                    <h2 className="text-xl font-bold text-slate-950">
+                      {t("CARDAPIO_DAILY_TITLE", "Pratos do Dia")}
+                    </h2>
+                  </div>
+                  <div className="h-px flex-1 bg-slate-300" />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {dailyProducts.map((product) => (
+                    <MenuCard
+                      key={`daily-${product.id}`}
+                      product={product}
+                      onClick={setSelectedProduct}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {filtered.map((product) => (
+                <MenuCard
+                  key={product.id}
+                  product={product}
+                  onClick={setSelectedProduct}
+                />
+              ))}
+            </div>
+          </>
         )}
       </section>
 
