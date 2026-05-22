@@ -21,6 +21,7 @@ import {
 } from "../lib/staffAlertsStore.js";
 import {
   clearWaiterCalls,
+  dismissWaiterCall,
   getWaiterCalls,
   subscribeToWaiterCalls,
 } from "../lib/waiterCallsStore.js";
@@ -644,6 +645,10 @@ function KitchenPage() {
     clearWaiterCalls();
   };
 
+  const handleDismissWaiterCall = (call, index) => {
+    dismissWaiterCall({ ...call, index });
+  };
+
   const formatRelativeTime = (timestamp) => {
     if (!timestamp) {
       return t("KITCHEN_JUST_NOW", "agora");
@@ -1260,6 +1265,13 @@ function KitchenPage() {
                   {formatRelativeTime(call?.timestamp)}
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={() => handleDismissWaiterCall(call, index)}
+                className="mt-4 w-full rounded-2xl bg-green-600 px-4 py-3 text-sm font-black uppercase text-white transition hover:bg-green-700"
+              >
+                Dar baixa
+              </button>
             </article>
           ))}
           {!waiterCalls.length ? (

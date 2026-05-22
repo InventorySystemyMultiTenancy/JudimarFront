@@ -41,6 +41,25 @@ export function clearWaiterCalls() {
   dispatchCalls([]);
 }
 
+export function dismissWaiterCall(callToDismiss) {
+  const nextCalls = readCalls().filter((call, index) => {
+    const sameMesa =
+      String(call.mesaId ?? "") === String(callToDismiss?.mesaId ?? "");
+    const sameTimestamp =
+      String(call.timestamp ?? "") === String(callToDismiss?.timestamp ?? "");
+
+    if (callToDismiss?.timestamp) {
+      return !(sameMesa && sameTimestamp);
+    }
+
+    return index !== callToDismiss?.index;
+  });
+
+  localStorage.setItem(WAITER_CALLS_STORAGE_KEY, JSON.stringify(nextCalls));
+  dispatchCalls(nextCalls);
+  return nextCalls;
+}
+
 export function subscribeToWaiterCalls(listener) {
   const handler = (event) => {
     listener(event.detail?.calls ?? []);
