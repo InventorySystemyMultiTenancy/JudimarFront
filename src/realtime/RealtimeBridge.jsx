@@ -13,6 +13,10 @@ import { appendWaiterCall } from "../lib/waiterCallsStore.js";
 const STAFF_ROLES = new Set(["ADMIN", "FUNCIONARIO", "ATENDENTE", "COZINHA"]);
 
 function getSocketUrl() {
+  if (import.meta.env.VITE_SOCKET_URL) {
+    return import.meta.env.VITE_SOCKET_URL;
+  }
+
   const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
   return apiUrl.replace(/\/api\/?$/, "");
 }
@@ -93,7 +97,11 @@ export default function RealtimeBridge() {
       auth: {
         token,
       },
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
 
     const onOrderCreated = (payload) => {

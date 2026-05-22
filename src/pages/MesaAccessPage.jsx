@@ -6,18 +6,13 @@ import { useTranslation } from "../context/I18nContext.jsx";
 
 function MesaAccessPage() {
   const { token } = useParams();
-  const { login, isAuthenticated, user } = useAuth();
+  const { login } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [status, setStatus] = useState(token ? "loading" : "error"); // loading | error
 
   useEffect(() => {
     // Se já está logado como MESA, vai direto para o cardápio da mesa
-    if (isAuthenticated && user?.role === "MESA") {
-      navigate("/cardapio-mesa", { replace: true });
-      return;
-    }
-
     if (!token) {
       return;
     }
@@ -38,7 +33,7 @@ function MesaAccessPage() {
         navigate("/cardapio-mesa", { replace: true });
       })
       .catch(() => setStatus("error"));
-  }, [isAuthenticated, login, navigate, token, user?.role]);
+  }, [login, navigate, token]);
 
   if (status === "loading") {
     return (

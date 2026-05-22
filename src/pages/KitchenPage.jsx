@@ -858,10 +858,12 @@ function KitchenPage() {
       paymentStatus,
       paymentMethod,
       advanceTo,
+      payLater,
     }) => {
       await api.patch(`/orders/${orderId}/payment-status`, {
         paymentStatus,
         ...(paymentMethod ? { paymentMethod } : {}),
+        ...(payLater ? { payLater: true } : {}),
       });
       if (advanceTo) {
         await api.patch(`/orders/${orderId}/status`, { status: advanceTo });
@@ -903,6 +905,7 @@ function KitchenPage() {
           (o) =>
             (o.status === "RECEBIDO" || o.status === "PREPARANDO") &&
             o.paymentStatus === "PENDENTE" &&
+            o.paymentMethod !== "PAGAR_DEPOIS" &&
             !o.mesaId,
         );
       }
@@ -1419,6 +1422,7 @@ function KitchenPage() {
                                 setPaymentStatus({
                                   orderId,
                                   paymentStatus: "PENDENTE",
+                                  payLater: true,
                                 })
                             : undefined
                         }
