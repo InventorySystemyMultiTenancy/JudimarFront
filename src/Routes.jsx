@@ -35,6 +35,7 @@ function AppRoutes() {
       {/* Acesso de mesa via QR code (público) */}
       <Route path="/mesa/:token" element={<MesaAccessPage />} />
       <Route path="/cardapio-mesa/:token" element={<MesaAccessPage />} />
+      <Route path="/comandas/:token" element={<ComandaSummaryPage />} />
 
       {/* Página somente leitura do cardápio para mesas — rota separada da sessão de pedidos /mesa */}
       <Route element={<PrivateRoute allowedRoles={["MESA"]} />}>
@@ -78,7 +79,6 @@ function AppRoutes() {
         }
       >
         <Route path="/comandas" element={<ComandasPage />} />
-        <Route path="/comandas/:token" element={<ComandaSummaryPage />} />
         <Route path="/caixa" element={<CaixaPage />} />
       </Route>
 

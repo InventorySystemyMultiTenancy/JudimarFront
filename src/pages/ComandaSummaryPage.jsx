@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { api } from "../lib/api.js";
 import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
+import { useAuth } from "../hooks/useAuth.js";
 
 const currency = (value) =>
   Number(value || 0).toLocaleString("pt-BR", {
@@ -13,6 +14,9 @@ const currency = (value) =>
 export default function ComandaSummaryPage() {
   const { token } = useParams();
   const queryClient = useQueryClient();
+  const { isAuthenticated, user } = useAuth();
+  const canClosePayment =
+    isAuthenticated && ["ADMIN", "FUNCIONARIO", "ATENDENTE"].includes(user?.role);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["comanda-summary", token],
@@ -57,6 +61,8 @@ export default function ComandaSummaryPage() {
   });
 
   const handleMarkPaid = async (order) => {
+    if (!canClosePayment) return;
+
     const paymentMethod = await askPaymentMethod({
       title: "Dar baixa / pago",
       text: `Pedido ${order.id.slice(-6).toUpperCase()} - ${currency(order.total)}`,
@@ -67,6 +73,8 @@ export default function ComandaSummaryPage() {
   };
 
   const handleMarkAllPaid = async () => {
+    if (!canClosePayment) return;
+
     const pendingOrders =
       data?.orders?.filter((order) => order.paymentStatus !== "APROVADO") ?? [];
     if (!pendingOrders.length) return;
@@ -137,7 +145,7 @@ export default function ComandaSummaryPage() {
                 </p>
               </div>
             </div>
-            {data.pendingOrdersCount > 0 ? (
+            {data.pendingOrdersCount > 0 && canClosePayment ? (
               <button
                 type="button"
                 onClick={handleMarkAllPaid}
@@ -146,6 +154,14 @@ export default function ComandaSummaryPage() {
               >
                 Dar baixa em tudo
               </button>
+            ) : null}
+            {data.pendingOrdersCount > 0 && !canClosePayment ? (
+              <Link
+                to={`/login?redirect=${encodeURIComponent(`/comandas/${token}`)}`}
+                className="mt-5 block w-full rounded-2xl border border-gold/30 bg-white px-4 py-4 text-center text-sm font-black uppercase text-gold"
+              >
+                Entrar para dar baixa
+              </Link>
             ) : null}
           </section>
 
@@ -214,7 +230,7 @@ export default function ComandaSummaryPage() {
                     <p className="mt-4 border-t border-gray-100 pt-3 text-right text-lg font-black text-primary">
                       Total {currency(order.total)}
                     </p>
-                    {order.paymentStatus !== "APROVADO" ? (
+                    {order.paymentStatus !== "APROVADO" && canClosePayment ? (
                       <button
                         type="button"
                         onClick={() => handleMarkPaid(order)}
