@@ -56,25 +56,15 @@ function MenuCard({ product, featured }) {
     ? tProductField(t, product.id, "DESC", product.description)
     : null;
   const { main: productDesc, acomp } = parseAcompanhamentos(rawDesc);
-  const isEsgotado = product.stock === 0;
 
   return (
     <>
       <article
-        className={`relative flex overflow-hidden rounded-lg border bg-white shadow-card transition ${
-          isEsgotado
-            ? "cursor-not-allowed opacity-55 border-border-soft"
-            : "cursor-pointer border-border-soft hover:shadow-card-hover hover:border-secondary/40"
-        }`}
-        onClick={() => !isEsgotado && setShowCustomizer(true)}
+        className="relative flex overflow-hidden rounded-lg border border-border-soft bg-white shadow-card transition cursor-pointer hover:shadow-card-hover hover:border-secondary/40"
+        onClick={() => setShowCustomizer(true)}
       >
         <div className="absolute left-2 top-2 z-10 flex flex-col gap-1">
-          {isEsgotado && (
-            <span className="rounded bg-red-600 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-widest text-white shadow">
-              {t("ESGOTADO", "Esgotado")}
-            </span>
-          )}
-          {featured && !isEsgotado && (
+          {featured && (
             <span className="rounded bg-secondary px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-widest text-white shadow">
               &#9733; {t("FEATURED_LABEL", "Destaque")}
             </span>
@@ -118,14 +108,9 @@ function MenuCard({ product, featured }) {
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                if (!isEsgotado) setShowCustomizer(true);
+                setShowCustomizer(true);
               }}
-              disabled={isEsgotado}
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow-sm transition ${
-                isEsgotado
-                  ? "cursor-not-allowed bg-gray-200 text-gray-400"
-                  : "bg-primary text-white hover:bg-secondary"
-              }`}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-white text-sm font-bold shadow-sm transition hover:bg-secondary"
               aria-label="Adicionar"
             >
               +

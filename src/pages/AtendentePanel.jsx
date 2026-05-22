@@ -66,18 +66,13 @@ function AttendantProductCard({
   showPhoto = false,
 }) {
   const [showCustomizer, setShowCustomizer] = useState(false);
-  const isSoldOut = product.stock === 0;
   const imageUrl = product.imageUrl ?? product.image ?? product.photo ?? null;
 
   return (
     <>
       <article
-        className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm transition ${
-          isSoldOut
-            ? "cursor-not-allowed opacity-55 border-gray-200"
-            : "cursor-pointer border-gray-200 hover:border-secondary/40 hover:shadow-md"
-        }`}
-        onClick={() => !isSoldOut && setShowCustomizer(true)}
+        className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition cursor-pointer hover:border-secondary/40 hover:shadow-md"
+        onClick={() => setShowCustomizer(true)}
       >
         {showPhoto && imageUrl ? (
           <img
@@ -113,16 +108,11 @@ function AttendantProductCard({
             </span>
             <button
               type="button"
-              disabled={isSoldOut}
               onClick={(event) => {
                 event.stopPropagation();
-                if (!isSoldOut) setShowCustomizer(true);
+                setShowCustomizer(true);
               }}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                isSoldOut
-                  ? "bg-gray-200 text-gray-400"
-                  : "bg-primary text-white hover:bg-secondary"
-              }`}
+              className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-secondary"
             >
               Adicionar
             </button>

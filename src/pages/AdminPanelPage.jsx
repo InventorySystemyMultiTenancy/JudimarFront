@@ -90,16 +90,6 @@ function AdminPanelPage() {
         .length,
     [currentNow, data],
   );
-  const lowStockProducts = useMemo(
-    () =>
-      productRows.filter(
-        (product) =>
-          Number(product.stockMinimum ?? 0) > 0 &&
-          Number(product.stock ?? 0) <= Number(product.stockMinimum ?? 0),
-      ),
-    [productRows],
-  );
-
   const handleDesktopToggle = async () => {
     if (!supportsDesktopNotifications()) {
       return;
@@ -203,11 +193,6 @@ function AdminPanelPage() {
             ? t("ADMIN_PANEL_DESKTOP_ON_JUDIMAR", "Notificações ativas")
             : t("ADMIN_PANEL_DESKTOP_OFF_JUDIMAR", "Notificações inativas")}
         </span>
-        {lowStockProducts.length > 0 && (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-            📦 {lowStockProducts.length} produto(s) com estoque baixo
-          </span>
-        )}
       </div>
 
       {/* Quick action cards */}
@@ -556,54 +541,6 @@ function AdminPanelPage() {
           </ul>
         </section>
       </div>
-
-      <section className="mt-6 rounded-3xl border border-amber-400/30 bg-lacquer/70 p-4 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-display text-xl text-amber-500">
-              📦 Produtos Acabando
-            </h2>
-            <p className="mt-1 text-xs text-smoke">
-              Produtos que já atingiram ou ficaram abaixo do estoque mínimo
-              cadastrado.
-            </p>
-          </div>
-          <Link
-            to="/admin/produtos/estoque"
-            className="rounded-xl border border-gray-200 px-3 py-1.5 text-xs font-semibold text-smoke transition hover:border-amber-400/40 hover:text-amber-600"
-          >
-            Ver estoque
-          </Link>
-        </div>
-
-        <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {lowStockProducts.map((product) => (
-            <li
-              key={product.id}
-              className="rounded-2xl border border-amber-400/30 bg-amber-50 p-4"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-amber-900">{product.name}</p>
-                  <p className="mt-1 text-xs text-amber-700">
-                    Atual: <strong>{product.stock ?? 0} un</strong>
-                    {" · "}
-                    Mínimo: <strong>{product.stockMinimum ?? 0} un</strong>
-                  </p>
-                </div>
-                <span className="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-amber-700 shadow-sm">
-                  {Number(product.stock ?? 0) === 0 ? "zerado" : "alerta"}
-                </span>
-              </div>
-            </li>
-          ))}
-          {!lowStockProducts.length && !isLoading ? (
-            <li className="rounded-2xl border border-dashed border-border-soft bg-accent/40 p-4 text-sm text-smoke md:col-span-2 xl:col-span-3">
-              Nenhum produto abaixo do estoque mínimo.
-            </li>
-          ) : null}
-        </ul>
-      </section>
     </main>
   );
 }

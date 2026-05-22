@@ -12,7 +12,6 @@ const emptyForm = () => ({
   category: "",
   singlePrice: "",
   singleCostPrice: "",
-  stockMinimum: "",
 });
 
 function getPrimarySize(product) {
@@ -150,8 +149,6 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
       singlePrice: firstSize?.price != null ? String(firstSize.price) : "",
       singleCostPrice:
         firstSize?.costPrice != null ? String(firstSize.costPrice) : "",
-      stockMinimum:
-        product.stockMinimum != null ? String(product.stockMinimum) : "",
     };
   });
 
@@ -213,12 +210,6 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
     ) {
       errs.singleCostPrice = "Custo inválido";
     }
-    if (
-      form.stockMinimum !== "" &&
-      (isNaN(Number(form.stockMinimum)) || Number(form.stockMinimum) < 0)
-    ) {
-      errs.stockMinimum = "Estoque mínimo inválido";
-    }
     if (form.imageUrl && !/^https?:\/\/.+/.test(form.imageUrl))
       errs.imageUrl = "URL inválida (deve começar com http)";
     setErrors(errs);
@@ -242,9 +233,6 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
             : {}),
         },
       ],
-      ...(form.stockMinimum !== ""
-        ? { stockMinimum: Number(form.stockMinimum) }
-        : {}),
     };
     mutation.mutate(payload);
   };
@@ -422,51 +410,7 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
                 </p>
               )}
             </div>
-            <div>
-              <label className="mb-1 block text-xs uppercase tracking-widest text-smoke">
-                Estoque mínimo
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={form.stockMinimum}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, stockMinimum: e.target.value }))
-                }
-                className="w-full rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gold/50"
-                placeholder="Ex: 5"
-              />
-              {errors.stockMinimum && (
-                <p className="mt-0.5 text-xs text-red-400">
-                  {errors.stockMinimum}
-                </p>
-              )}
-            </div>
           </div>
-          {isEdit && (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-              Estoque atual:{" "}
-              <strong className="text-gray-900">
-                {product?.stock ?? 0} un
-              </strong>
-              {" · "}
-              <strong className="text-gray-900">
-                mínimo {product?.stockMinimum ?? 0} un
-              </strong>
-              {" · "}
-              <span className="text-xs text-gray-400">
-                Para ajustar o estoque use{" "}
-                <a
-                  href="/admin/produtos/estoque"
-                  className="text-amber-500 underline"
-                >
-                  Gerenciar Estoque
-                </a>
-                .
-              </span>
-            </div>
-          )}
 
           <div className="flex gap-3 pt-2">
             <button
@@ -660,27 +604,6 @@ function ProductCard({ product, onEdit }) {
             {translatedCategory}
           </span>
         ) : null}
-        <span
-          className={`rounded-xl px-2 py-0.5 text-xs font-semibold ${
-            product.stock === 0
-              ? "bg-red-100 text-red-600"
-              : "bg-emerald-100 text-emerald-700"
-          }`}
-        >
-          {product.stock === 0
-            ? t("ADMIN_PRODUCTS_STOCK_ESGOTADO", "Esgotado")
-            : `Estoque: ${product.stock}`}
-        </span>
-        <span
-          className={`rounded-xl px-2 py-0.5 text-xs font-semibold ${
-            Number(product.stockMinimum ?? 0) > 0 &&
-            Number(product.stock ?? 0) <= Number(product.stockMinimum ?? 0)
-              ? "bg-amber-100 text-amber-700"
-              : "bg-gray-200 text-smoke"
-          }`}
-        >
-          Min.: {product.stockMinimum ?? 0}
-        </span>
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2">

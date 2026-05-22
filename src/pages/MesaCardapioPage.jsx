@@ -19,17 +19,16 @@ function MenuCard({ product, onClick }) {
     product.description ?? "",
   );
   const imageUrl = product.imageUrl || product.image || product.photo || "";
-  const isOutOfStock = product.stock === 0;
   const clickable = Boolean(imageUrl);
 
   return (
     <article
       onClick={() => clickable && onClick(product)}
       className={`flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-[#fff9f0] p-4 shadow-sm transition ${
-        isOutOfStock
-          ? "opacity-60"
-          : "hover:shadow-lg hover:shadow-slate-200/40"
-      } ${clickable ? "cursor-pointer" : "cursor-default"}`}
+        clickable
+          ? "hover:shadow-lg hover:shadow-slate-200/40 cursor-pointer"
+          : "cursor-default"
+      }`}
     >
       <div className="mb-4 flex items-start gap-4">
         {imageUrl ? (
@@ -63,11 +62,6 @@ function MenuCard({ product, onClick }) {
           </span>
         </div>
       </div>
-      {isOutOfStock && (
-        <div className="rounded-2xl bg-red-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-red-700">
-          {t("ESGOTADO", "Esgotado")}
-        </div>
-      )}
       {clickable && (
         <p className="mt-4 text-xs text-slate-500">
           {t("MESA_CARDAPIO_CLICK_IMAGE", "Clique para ver a imagem maior")}

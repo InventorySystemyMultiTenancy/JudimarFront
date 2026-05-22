@@ -2,8 +2,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AdminPanelPage from "./pages/AdminPanelPage.jsx";
 import AdminProductsPage from "./pages/AdminProductsPage.jsx";
 import AdminProductsHubPage from "./pages/AdminProductsHubPage.jsx";
-import AdminPurchaseProductsPage from "./pages/AdminPurchaseProductsPage.jsx";
-import AdminStockPage from "./pages/AdminStockPage.jsx";
 import AtendentePanel from "./pages/AtendentePanel.jsx";
 import AdminOrderHistoryPage from "./pages/AdminOrderHistoryPage.jsx";
 import AdminUsersPage from "./pages/AdminUsersPage.jsx";
@@ -79,11 +77,6 @@ function AppRoutes() {
         <Route path="/admin" element={<AdminPanelPage />} />
         <Route path="/admin/produtos" element={<AdminProductsHubPage />} />
         <Route path="/admin/produtos/lista" element={<AdminProductsPage />} />
-        <Route path="/admin/produtos/estoque" element={<AdminStockPage />} />
-        <Route
-          path="/admin/produtos/comprar"
-          element={<AdminPurchaseProductsPage />}
-        />
         <Route path="/admin/vendas" element={<SalesAnalyticsPage />} />
         <Route path="/admin/historico" element={<AdminOrderHistoryPage />} />
         <Route path="/admin/usuarios" element={<AdminUsersPage />} />
