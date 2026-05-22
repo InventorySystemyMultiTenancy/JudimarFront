@@ -732,6 +732,7 @@ function KitchenPage() {
       return roleFiltered
         .map((order) => ({
           ...order,
+          status: order.status === "RECEBIDO" ? "PREPARANDO" : order.status,
           items: getKitchenItems(order),
         }))
         .filter(hasKitchenItems);
