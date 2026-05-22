@@ -6,9 +6,7 @@ import {
   useState,
 } from "react";
 
-const I18N_API_URL = import.meta.env.VITE_I18N_URL || "http://localhost:3001";
 const SISTEMA = "judimar";
-const SISTEMA_FALLBACK = "website";
 const DEFAULT_LOCALE = "pt-BR";
 const STORAGE_NS = `i18n_${SISTEMA}`;
 const ANON_LOCALE_KEY = `${STORAGE_NS}_locale`;
@@ -97,33 +95,11 @@ function clearCache(locale) {
 // ─── fetch ──────────────────────────────────────────────────────────────────
 
 async function fetchTranslations(locale) {
-  debugLog("fetchTranslations:start", { locale });
-  const primaryUrl = `${I18N_API_URL}/traducoes/${SISTEMA}/${encodeURIComponent(locale)}`;
-  let res = await fetch(primaryUrl);
-  debugLog("fetchTranslations:response", {
-    locale,
-    sistema: SISTEMA,
-    status: res.status,
-  });
-
-  if (!res.ok && res.status === 404 && SISTEMA_FALLBACK !== SISTEMA) {
-    const fallbackUrl = `${I18N_API_URL}/traducoes/${SISTEMA_FALLBACK}/${encodeURIComponent(locale)}`;
-    res = await fetch(fallbackUrl);
-    debugLog("fetchTranslations:fallback_response", {
-      locale,
-      sistema: SISTEMA_FALLBACK,
-      status: res.status,
-    });
-  }
-
-  if (!res.ok) throw new Error(`I18n fetch failed: ${res.status}`);
-
-  const data = await res.json();
-  debugLog("fetchTranslations:payload", {
-    locale,
-    totalKeys: Object.keys(data?.traducoes || {}).length,
-  });
-  return data;
+  debugLog("fetchTranslations:disabled", { locale });
+  return {
+    traducoes: {},
+    direcao: locale === "ar-MA" ? "rtl" : "ltr",
+  };
 }
 
 // ─── Provider ───────────────────────────────────────────────────────────────

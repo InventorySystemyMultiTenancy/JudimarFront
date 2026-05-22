@@ -20,11 +20,6 @@ function getPrimarySize(product) {
 }
 
 // ── Tradução automática de produtos ──────────────────────────────────────────
-const I18N_URL =
-  import.meta.env.VITE_I18N_URL ||
-  "https://tradudor-i8n-languages.onrender.com";
-const I18N_SISTEMA = "website";
-const ALL_LOCALES = ["pt-BR", "pt-PT", "en-US", "it-IT", "es-ES", "ar-MA"];
 const WEEKDAY_OPTIONS = [
   { value: "MON", label: "Seg" },
   { value: "TUE", label: "Ter" },
@@ -80,75 +75,15 @@ function tProductField(t, productId, field, fallback) {
   return resolved;
 }
 
-async function saveProductTranslations(
-  id,
-  name,
-  description,
-  category,
-  baseLocale = "pt-BR",
-) {
-  console.log("[REAPPLY] Iniciando tradução para produto:", {
-    id,
-    name,
-    baseLocale,
-  });
-  debugLog("saveProductTranslations:request", {
-    endpoint: `${I18N_URL}/traducoes/produto-auto`,
-    id,
-    name,
-    description,
-    category,
-    baseLocale,
-  });
-
-  const res = await fetch(`${I18N_URL}/traducoes/produto-auto`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      productId: id,
-      name,
-      description,
-      category,
-      baseLocale,
-      sistema: I18N_SISTEMA,
-    }),
-  });
-
-  console.log("[REAPPLY] Response status:", res.status);
-
-  if (!res.ok) {
-    console.error(
-      "[REAPPLY] Erro - Response não OK:",
-      res.status,
-      res.statusText,
-    );
-    return { total: 0, succeeded: 0, failed: 0 };
-  }
-
-  const data = await res.json();
-  console.log("[REAPPLY] Response data:", data);
-  debugLog("saveProductTranslations:response", data);
-
-  const total = Number(data?.resumo?.totalSalvos ?? 0);
-  const succeeded = total;
-
-  console.log("[REAPPLY] Total translations:", total);
-
-  return {
-    total,
-    succeeded,
-    failed: 0,
-  };
+async function saveProductTranslations() {
+  return { total: 0, succeeded: 0, failed: 0 };
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ProductModal({ product, onClose, existingCategories = [] }) {
-  const { t, locale, refreshTranslations, invalidateCache } = useTranslation();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const isEdit = !!product;
-  const translationBaseLocale = ALL_LOCALES.includes(locale)
-    ? locale
-    : "pt-BR";
 
   const [form, setForm] = useState(() => {
     if (!isEdit) return emptyForm();
@@ -178,27 +113,13 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
       const res = await api.post("/admin/products", payload);
       return res.data;
     },
-    onSuccess: (result) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-products"] });
       toast.success(
         isEdit
           ? t("ADMIN_PRODUCTS_UPDATED", "Produto atualizado!")
           : t("ADMIN_PRODUCTS_CREATED", "Produto criado!"),
       );
-      // Salva traduções no banco i18n (fire-and-forget, não bloqueia o admin)
-      const saved = result?.data ?? result;
-      if (saved?.id) {
-        saveProductTranslations(
-          saved.id,
-          saved.name,
-          saved.description,
-          saved.category,
-          translationBaseLocale,
-        ).then(() => {
-          invalidateCache?.(translationBaseLocale);
-          refreshTranslations?.();
-        });
-      }
       onClose();
     },
     onError: (err) => {
@@ -473,7 +394,7 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
 }
 
 function ProductCard({ product, onEdit }) {
-  const { t, locale, refreshTranslations } = useTranslation();
+  const { t, locale } = useTranslation();
   const queryClient = useQueryClient();
   const primarySize = getPrimarySize(product);
   const productName = tProductField(t, product.id, "NAME", product.name);
@@ -514,7 +435,8 @@ function ProductCard({ product, onEdit }) {
       toast.error(t("ADMIN_PRODUCTS_STATUS_ERROR", "Falha ao alterar status")),
   });
 
-  const reapplyTranslations = useMutation({
+  const refreshTranslations = null;
+  const REAPPLY_TRANSLATIONS = useMutation({
     mutationFn: async () => {
       const baseLocale = "pt-BR";
       console.log(
@@ -643,23 +565,13 @@ function ProductCard({ product, onEdit }) {
         </span>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="mt-4 grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={() => onEdit(product)}
           className="rounded-2xl border border-gold/30 py-2 text-xs font-semibold text-gold transition hover:bg-gold/10"
         >
           {t("EDIT", "Editar")}
-        </button>
-        <button
-          type="button"
-          disabled={reapplyTranslations.isPending}
-          onClick={() => reapplyTranslations.mutate()}
-          className="rounded-2xl border border-sky-400/30 py-2 text-xs font-semibold text-sky-600 transition hover:bg-sky-500/10 disabled:opacity-50"
-        >
-          {reapplyTranslations.isPending
-            ? t("ADMIN_PRODUCTS_REAPPLY_TRANSLATION_LOADING", "Reaplicando...")
-            : t("ADMIN_PRODUCTS_REAPPLY_TRANSLATION", "Reaplicar traducao")}
         </button>
         <button
           type="button"
