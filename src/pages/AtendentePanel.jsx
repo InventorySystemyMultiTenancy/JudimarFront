@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -9,10 +9,10 @@ import { api } from "../lib/api.js";
 import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
 import {
   clearWaiterCalls,
+  dismissWaiterCall,
   getWaiterCalls,
   subscribeToWaiterCalls,
 } from "../lib/waiterCallsStore.js";
-import { useTranslation } from "../context/I18nContext.jsx";
 
 const ACTIVE_STATUSES = ["RECEBIDO", "PREPARANDO", "PRONTO", "LEVAR_PARA_MESA"];
 
@@ -150,7 +150,7 @@ function formatRelativeTime(timestamp) {
 
 function TerminalChargeModal({ order, onClose }) {
   const queryClient = useQueryClient();
-  const [approved, setApproved] = useState(false);
+  const approvedRef = useRef(false);
 
   const terminalMutation = useMutation({
     mutationFn: () =>
@@ -169,13 +169,13 @@ function TerminalChargeModal({ order, onClose }) {
       const res = await api.get(`/orders/${order.id}`);
       return res.data?.data;
     },
-    refetchInterval: approved ? false : 4000,
-    enabled: !!order?.id && !approved,
+    refetchInterval: 4000,
+    enabled: !!order?.id,
   });
 
   useEffect(() => {
-    if (polledOrder?.paymentStatus === "APROVADO" && !approved) {
-      setApproved(true);
+    if (polledOrder?.paymentStatus === "APROVADO" && !approvedRef.current) {
+      approvedRef.current = true;
       toast.success("Pagamento confirmado.");
       queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
       queryClient.invalidateQueries({ queryKey: ["atendente-mesa-orders"] });
@@ -184,7 +184,7 @@ function TerminalChargeModal({ order, onClose }) {
       });
       onClose();
     }
-  }, [approved, onClose, polledOrder, queryClient]);
+  }, [onClose, polledOrder, queryClient]);
 
   useEffect(() => {
     if (
@@ -245,7 +245,6 @@ export default function AtendentePanel() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { t } = useTranslation();
   const {
     items,
     clearCart,
@@ -273,7 +272,7 @@ export default function AtendentePanel() {
     return () => clearInterval(id);
   }, []);
 
-  const { data: orders = [], isLoading: isLoadingOrders } = useQuery({
+  const { data: orders = [] } = useQuery({
     queryKey: ["atendente-orders"],
     queryFn: async () => {
       const res = await api.get("/orders");
@@ -513,6 +512,18 @@ export default function AtendentePanel() {
     toast.success("Chamadas limpas");
   }, []);
 
+  const handleDismissCall = useCallback((call, index) => {
+    dismissWaiterCall({ ...call, index });
+    toast.success("Chamada baixada");
+  }, []);
+
+  const scrollToPanelSection = useCallback((sectionId) => {
+    document.getElementById(sectionId)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, []);
+
   const handleSubmitMesaOrder = useCallback(() => {
     if (!selectedMesaId) {
       toast.error("Selecione uma mesa.");
@@ -614,6 +625,13 @@ export default function AtendentePanel() {
                   <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-secondary">
                     Atendimento solicitado
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => handleDismissCall(call, index)}
+                    className="mt-4 w-full rounded-2xl bg-green-600 px-4 py-3 text-sm font-black uppercase text-white transition hover:bg-green-700"
+                  >
+                    Dar baixa
+                  </button>
                 </article>
               ))}
             </div>
@@ -675,11 +693,40 @@ export default function AtendentePanel() {
               );
             })}
           </div>
+
+          {selectedMesa ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => scrollToPanelSection("mesa-fechamento")}
+                className="rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-secondary"
+              >
+                Fechamento da mesa
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToPanelSection("mesa-cardapio")}
+                className="rounded-2xl border border-secondary/40 bg-white px-4 py-3 text-sm font-bold text-secondary shadow-sm transition hover:bg-secondary/10"
+              >
+                Cardápio
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToPanelSection("mesa-historico")}
+                className="rounded-2xl border border-primary/20 bg-white px-4 py-3 text-sm font-bold text-primary shadow-sm transition hover:bg-primary/5"
+              >
+                Histórico da mesa
+              </button>
+            </div>
+          ) : null}
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
           <div className="space-y-6">
-            <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+            <section
+              id="mesa-cardapio"
+              className="scroll-mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm"
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="font-display text-xl text-primary">
@@ -763,7 +810,10 @@ export default function AtendentePanel() {
               )}
             </section>
 
-            <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+            <section
+              id="mesa-historico"
+              className="scroll-mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm"
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="font-display text-xl text-primary">
@@ -888,7 +938,10 @@ export default function AtendentePanel() {
             </section>
           </div>
 
-          <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <section
+            id="mesa-fechamento"
+            className="scroll-mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm"
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-display text-xl text-primary">

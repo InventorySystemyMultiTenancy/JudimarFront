@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
+import Swal from "sweetalert2";
 import { api } from "../lib/api.js";
 import { useTranslation } from "../context/I18nContext.jsx";
 
@@ -523,7 +524,79 @@ function ProductCard({ product, onEdit }) {
     },
   });
 
+  const deleteProduct = useMutation({
+    mutationFn: async () => {
+      await api.delete(`/admin/products/${product.id}/permanent`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+      toast.success(t("ADMIN_PRODUCTS_DELETE_SUCCESS", "Produto excluido."));
+    },
+    onError: (error) => {
+      toast.error(
+        error?.response?.data?.error?.message ||
+          t("ADMIN_PRODUCTS_DELETE_ERROR", "Falha ao excluir produto."),
+      );
+    },
+  });
+
+  const confirmDeleteProduct = async () => {
+    const result = await Swal.fire({
+      title: t("ADMIN_PRODUCTS_DELETE_CONFIRM_TITLE", "Excluir produto?"),
+      text: t(
+        "ADMIN_PRODUCTS_DELETE_CONFIRM_TEXT",
+        "Essa acao remove o produto definitivamente. Produtos com historico de pedido nao podem ser excluidos.",
+      ),
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: t("ADMIN_PRODUCTS_DELETE_CONFIRM", "Sim, excluir"),
+      cancelButtonText: t("CANCEL", "Cancelar"),
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+    });
+
+    if (result.isConfirmed) {
+      deleteProduct.mutate();
+    }
+  };
+
   */
+
+  const deleteProduct = useMutation({
+    mutationFn: async () => {
+      await api.delete(`/admin/products/${product.id}/permanent`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+      toast.success(t("ADMIN_PRODUCTS_DELETE_SUCCESS", "Produto excluido."));
+    },
+    onError: (error) => {
+      toast.error(
+        error?.response?.data?.error?.message ||
+          t("ADMIN_PRODUCTS_DELETE_ERROR", "Falha ao excluir produto."),
+      );
+    },
+  });
+
+  const confirmDeleteProduct = async () => {
+    const result = await Swal.fire({
+      title: t("ADMIN_PRODUCTS_DELETE_CONFIRM_TITLE", "Excluir produto?"),
+      text: t(
+        "ADMIN_PRODUCTS_DELETE_CONFIRM_TEXT",
+        "Essa acao remove o produto definitivamente. Produtos com historico de pedido nao podem ser excluidos.",
+      ),
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: t("ADMIN_PRODUCTS_DELETE_CONFIRM", "Sim, excluir"),
+      cancelButtonText: t("CANCEL", "Cancelar"),
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+    });
+
+    if (result.isConfirmed) {
+      deleteProduct.mutate();
+    }
+  };
 
   return (
     <article
@@ -596,7 +669,11 @@ function ProductCard({ product, onEdit }) {
         ) : null}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div
+        className={`mt-4 grid gap-2 ${
+          product.isActive ? "grid-cols-2" : "grid-cols-3"
+        }`}
+      >
         <button
           type="button"
           onClick={() => onEdit(product)}
@@ -616,8 +693,18 @@ function ProductCard({ product, onEdit }) {
         >
           {product.isActive
             ? t("ADMIN_PRODUCTS_DISABLE", "Desativar")
-            : t("ADMIN_PRODUCTS_RESTORE", "Reativar")}
+            : t("ADMIN_PRODUCTS_RESTORE", "Ativar")}
         </button>
+        {!product.isActive ? (
+          <button
+            type="button"
+            disabled={deleteProduct.isPending}
+            onClick={confirmDeleteProduct}
+            className="rounded-2xl border border-red-500/40 py-2 text-xs font-semibold text-red-500 transition hover:bg-red-500/10 disabled:opacity-50"
+          >
+            {t("ADMIN_PRODUCTS_DELETE", "Excluir")}
+          </button>
+        ) : null}
       </div>
     </article>
   );
