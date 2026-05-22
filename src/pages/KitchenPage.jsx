@@ -244,6 +244,8 @@ function OrderCard({
           >
             {order.mesa
               ? order.mesa.name
+              : order.comanda
+                ? `Comanda ${order.comanda.number}`
               : (order.user?.name ?? t("CLIENT_DASHBOARD_CLIENT", "Cliente"))}
           </p>
           <p
@@ -270,6 +272,8 @@ function OrderCard({
             } ${
               order.mesa
                 ? "bg-amber-100 text-amber-700"
+                : order.comanda
+                  ? "bg-emerald-100 text-emerald-700"
                 : order.isPickup
                   ? "bg-purple-100 text-purple-700"
                   : "bg-sky-100 text-sky-700"
@@ -277,6 +281,8 @@ function OrderCard({
           >
             {order.mesa
               ? `🪑 ${t("ADMIN_PANEL_MESA_LABEL", "Mesa")} ${order.mesa.number}`
+              : order.comanda
+                ? `🎫 Comanda ${order.comanda.number}`
               : order.isPickup
                 ? `🏠 ${t("KITCHEN_PICKUP", "Retirada")}`
                 : `🛵 ${t("KITCHEN_DELIVERY", "Entrega")}`}

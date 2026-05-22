@@ -55,15 +55,6 @@ function AdminPanelPage() {
     },
   });
 
-  const { data: productRows = [] } = useQuery({
-    queryKey: ["admin-low-stock-products"],
-    queryFn: async () => {
-      const response = await api.get("/products");
-      return response.data?.data || [];
-    },
-    staleTime: 60_000,
-  });
-
   const currentNow = useMemo(() => new Date(now), [now]);
 
   // Mesas com pagamento pendente (derivado da mesma query, sem request extra)
@@ -339,6 +330,23 @@ function AdminPanelPage() {
                 "ADMIN_PANEL_CARD_TABLES_DESC_JUDIMAR",
                 "Cadastrar mesas, maquininhas e gerar QR codes",
               )}
+            </p>
+          </div>
+        </Link>
+
+        <Link
+          to="/comandas"
+          className="group flex items-start gap-4 rounded-2xl border border-gold/20 bg-lacquer/70 p-5 transition hover:border-gold/50 hover:shadow-md"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-2xl">
+            🎫
+          </span>
+          <div>
+            <h2 className="font-semibold text-gray-900 group-hover:text-gold">
+              Comandas
+            </h2>
+            <p className="mt-0.5 text-xs text-smoke">
+              Criar comandas, gerar QR e consultar valores em aberto
             </p>
           </div>
         </Link>

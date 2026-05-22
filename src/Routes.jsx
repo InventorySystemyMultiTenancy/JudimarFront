@@ -19,6 +19,8 @@ import MesaAccessPage from "./pages/MesaAccessPage.jsx";
 import MesaCheckoutPage from "./pages/MesaCheckoutPage.jsx";
 import MesaCardapioPage from "./pages/MesaCardapioPage.jsx";
 import AdminMesaCardapioPage from "./pages/AdminMesaCardapioPage.jsx";
+import ComandasPage from "./pages/ComandasPage.jsx";
+import ComandaSummaryPage from "./pages/ComandaSummaryPage.jsx";
 import PrivateRoute from "./routes/PrivateRoute.js";
 
 function AppRoutes() {
@@ -67,6 +69,15 @@ function AppRoutes() {
         }
       >
         <Route path="/cozinha" element={<KitchenPage />} />
+      </Route>
+
+      <Route
+        element={
+          <PrivateRoute allowedRoles={["ADMIN", "FUNCIONARIO", "ATENDENTE"]} />
+        }
+      >
+        <Route path="/comandas" element={<ComandasPage />} />
+        <Route path="/comandas/:token" element={<ComandaSummaryPage />} />
       </Route>
 
       <Route element={<PrivateRoute allowedRoles={["ATENDENTE"]} />}>

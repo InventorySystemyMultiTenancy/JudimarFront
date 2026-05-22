@@ -568,6 +568,13 @@ export default function AtendentePanel() {
             </button>
             <button
               type="button"
+              onClick={() => navigate("/comandas")}
+              className="rounded-lg border border-accent/30 px-3 py-2 text-xs font-semibold text-accent transition hover:bg-accent/10"
+            >
+              Comandas
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 logout();
                 navigate("/login");
