@@ -24,14 +24,6 @@ const I18N_URL =
   "https://tradudor-i8n-languages.onrender.com";
 const I18N_SISTEMA = "website";
 const ALL_LOCALES = ["pt-BR", "pt-PT", "en-US", "it-IT", "es-ES", "ar-MA"];
-const LOCALE_LABELS = {
-  "pt-BR": "Portugues (Brasil)",
-  "pt-PT": "Portugues (Portugal)",
-  "en-US": "English",
-  "it-IT": "Italiano",
-  "es-ES": "Espanol",
-  "ar-MA": "Arabic",
-};
 
 function isDebugEnabled() {
   if (typeof window === "undefined") return false;
@@ -133,10 +125,12 @@ async function saveProductTranslations(
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ProductModal({ product, onClose, existingCategories = [] }) {
-  const { t, refreshTranslations, invalidateCache } = useTranslation();
+  const { t, locale, refreshTranslations, invalidateCache } = useTranslation();
   const queryClient = useQueryClient();
   const isEdit = !!product;
-  const [translationBaseLocale, setTranslationBaseLocale] = useState("pt-BR");
+  const translationBaseLocale = ALL_LOCALES.includes(locale)
+    ? locale
+    : "pt-BR";
 
   const [form, setForm] = useState(() => {
     if (!isEdit) return emptyForm();
@@ -308,30 +302,6 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
                 <option key={cat} value={cat} />
               ))}
             </datalist>
-          </div>
-
-          {/* Translation base language */}
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-widest text-smoke">
-              {t("ADMIN_PRODUCTS_BASE_LANGUAGE", "Idioma base do cadastro")}
-            </label>
-            <select
-              value={translationBaseLocale}
-              onChange={(e) => setTranslationBaseLocale(e.target.value)}
-              className="w-full rounded-2xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-900 outline-none focus:border-gold/50"
-            >
-              {ALL_LOCALES.map((loc) => (
-                <option key={loc} value={loc}>
-                  {LOCALE_LABELS[loc] ?? loc}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-smoke">
-              {t(
-                "ADMIN_PRODUCTS_BASE_LANGUAGE_HINT",
-                "O texto digitado sera salvo neste idioma e replicado automaticamente para os outros.",
-              )}
-            </p>
           </div>
 
           {/* Image URL */}
