@@ -154,6 +154,8 @@ function SalesAnalyticsPage() {
   const summary = data?.summary;
   const dailySales = data?.dailySales ?? [];
   const topProducts = data?.topProducts ?? [];
+  const paymentMethods = data?.paymentMethods ?? [];
+  const orderTypes = data?.orderTypes ?? [];
   const rawStatusCounts = data?.statusCounts ?? {};
   const statusCounts = summary
     ? { ...rawStatusCounts, PAGO: summary.paidOrdersCount }
@@ -322,6 +324,91 @@ function SalesAnalyticsPage() {
               value={formatCurrency(summary.averageTicket, locale)}
               hint={`${summary.paidOrdersCount} pagos de ${summary.ordersCount} pedidos`}
             />
+          </section>
+
+          <section className="mt-4 grid gap-4 lg:grid-cols-2">
+            <article className="rounded-3xl border border-border-soft bg-white p-5 shadow-card">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-display text-xl text-primary">
+                    Formas de Pagamento
+                  </h2>
+                  <p className="mt-1 text-xs text-smoke">
+                    Pedidos pagos e não cancelados
+                  </p>
+                </div>
+                {summary.refundPendingCount > 0 ? (
+                  <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+                    {summary.refundPendingCount} estorno(s)
+                  </span>
+                ) : null}
+              </div>
+              <div className="mt-4 space-y-3">
+                {paymentMethods.map((method) => (
+                  <div
+                    key={method.method}
+                    className="flex items-center justify-between rounded-2xl bg-accent/50 px-4 py-3"
+                  >
+                    <div>
+                      <p className="font-semibold text-primary">
+                        {method.label}
+                      </p>
+                      <p className="text-xs text-smoke">
+                        {method.orders} pedido(s)
+                      </p>
+                    </div>
+                    <span className="font-semibold text-secondary">
+                      {formatCurrency(method.revenue, locale)}
+                    </span>
+                  </div>
+                ))}
+                {paymentMethods.length === 0 ? (
+                  <p className="text-sm text-smoke">
+                    Nenhum pagamento aprovado no período.
+                  </p>
+                ) : null}
+              </div>
+              {summary.refundPendingTotal > 0 ? (
+                <p className="mt-3 rounded-2xl bg-red-50 px-4 py-2 text-xs text-red-700">
+                  Estornos pendentes:{" "}
+                  {formatCurrency(summary.refundPendingTotal, locale)}
+                </p>
+              ) : null}
+            </article>
+
+            <article className="rounded-3xl border border-border-soft bg-white p-5 shadow-card">
+              <h2 className="font-display text-xl text-primary">
+                Tipo de Pedido
+              </h2>
+              <p className="mt-1 text-xs text-smoke">
+                Mesa, retirada e entrega com pagamento aprovado
+              </p>
+              <div className="mt-4 space-y-3">
+                {orderTypes.map((type) => (
+                  <div
+                    key={type.type}
+                    className="flex items-center justify-between rounded-2xl bg-accent/50 px-4 py-3"
+                  >
+                    <div>
+                      <p className="font-semibold text-primary">
+                        {type.label}
+                      </p>
+                      <p className="text-xs text-smoke">
+                        {type.orders} pedido(s)
+                      </p>
+                    </div>
+                    <span className="font-semibold text-secondary">
+                      {formatCurrency(type.revenue, locale)}
+                    </span>
+                  </div>
+                ))}
+                {orderTypes.length === 0 ? (
+                  <p className="text-sm text-smoke">
+                    Nenhum pedido pago no período.
+                  </p>
+                ) : null}
+              </div>
+            </article>
           </section>
 
           {/* ── Gráfico + Status ─────────────────────────────────── */}

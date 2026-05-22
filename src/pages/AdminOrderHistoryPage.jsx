@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { api } from "../lib/api.js";
 import toast from "react-hot-toast";
 import { useTranslation } from "../context/I18nContext.jsx";
+import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
 
 const STATUS_CLASS = {
   RECEBIDO: "bg-blue-100 text-blue-700",
@@ -21,6 +22,15 @@ const PAYMENT_CLASS = {
   ESTORNADO: "bg-purple-100 text-purple-700",
 };
 
+const PAYMENT_METHOD_LABEL = {
+  CREDITO: "Crédito",
+  DEBITO: "Débito",
+  PIX: "Pix",
+  DINHEIRO: "Dinheiro",
+  mercado_pago: "Mercado Pago",
+  nao_informado: "Não informado",
+};
+
 const formatDate = (iso) =>
   new Date(iso).toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -29,6 +39,35 @@ const formatDate = (iso) =>
     hour: "2-digit",
     minute: "2-digit",
   });
+
+const formatMoney = (value, locale = "pt-BR") =>
+  Number(value || 0).toLocaleString(locale, {
+    style: "currency",
+    currency: "BRL",
+  });
+
+function paymentMethodLabel(method) {
+  if (!method) return "Não informado";
+  return PAYMENT_METHOD_LABEL[method] ?? method;
+}
+
+function parseMaybeJson(value) {
+  if (!value) return null;
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function formatAddon(addon) {
+  if (typeof addon === "string") return addon;
+  const name = addon?.name ?? addon?.label ?? addon?.title ?? "Adicional";
+  const price =
+    addon?.price != null ? ` (${formatMoney(addon.price, "pt-BR")})` : "";
+  return `${name}${price}`;
+}
 
 function AdminOrderHistoryPage() {
   const { t, locale } = useTranslation();
@@ -105,9 +144,10 @@ function AdminOrderHistoryPage() {
     variables: payingId,
     isPending: isPaying,
   } = useMutation({
-    mutationFn: async (orderId) => {
+    mutationFn: async ({ orderId, paymentMethod }) => {
       await api.patch(`/orders/${orderId}/payment-status`, {
         paymentStatus: "APROVADO",
+        paymentMethod,
       });
     },
     onSuccess: () => {
@@ -121,6 +161,15 @@ function AdminOrderHistoryPage() {
         t("ADMIN_HISTORY_PAYMENT_UPDATE_ERROR", "Falha ao atualizar pagamento"),
       ),
   });
+
+  const handleMarkAsPaid = async (orderId) => {
+    const paymentMethod = await askPaymentMethod({
+      title: "Marcar como pago",
+      text: "Escolha a forma de pagamento recebida.",
+    });
+    if (!paymentMethod) return;
+    markAsPaid({ orderId, paymentMethod });
+  };
 
   const {
     mutate: markAsRefunded,
@@ -381,7 +430,9 @@ function AdminOrderHistoryPage() {
                       #{order.id.slice(-6).toUpperCase()}
                     </span>
                     <span className="truncate text-sm font-semibold text-gray-900">
-                      {order.user?.name ?? "—"}
+                      {order.user?.name ??
+                        order.mesa?.name ??
+                        (order.mesa?.number ? `Mesa ${order.mesa.number}` : "—")}
                     </span>
                     {needsRefundFlag && (
                       <span className="shrink-0 rounded-full bg-red-200 px-2 py-0.5 text-[10px] font-bold text-red-800">
@@ -428,11 +479,11 @@ function AdminOrderHistoryPage() {
                   order.status !== "CANCELADO" && (
                     <button
                       type="button"
-                      disabled={isPaying && payingId === order.id}
-                      onClick={() => markAsPaid(order.id)}
+                      disabled={isPaying && payingId?.orderId === order.id}
+                      onClick={() => handleMarkAsPaid(order.id)}
                       className="shrink-0 rounded-xl bg-green-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-green-700 disabled:opacity-50"
                     >
-                      {isPaying && payingId === order.id
+                      {isPaying && payingId?.orderId === order.id
                         ? "..."
                         : t("ADMIN_HISTORY_MARK_PAID", "✓ Pago")}
                     </button>
@@ -458,6 +509,89 @@ function AdminOrderHistoryPage() {
                     {formatDate(order.createdAt)}
                   </p>
 
+                  <div className="mb-3 grid gap-2 rounded-xl bg-gray-50 p-3 text-xs text-gray-700 sm:grid-cols-2 lg:grid-cols-3">
+                    <p>
+                      <span className="font-semibold text-gray-900">
+                        Pedido:
+                      </span>{" "}
+                      {order.id}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-gray-900">
+                        Criado em:
+                      </span>{" "}
+                      {formatDate(order.createdAt)}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-gray-900">
+                        Atualizado em:
+                      </span>{" "}
+                      {formatDate(order.updatedAt)}
+                    </p>
+                    {order.deliveredAt && (
+                      <p>
+                        <span className="font-semibold text-gray-900">
+                          Entregue em:
+                        </span>{" "}
+                        {formatDate(order.deliveredAt)}
+                      </p>
+                    )}
+                    <p>
+                      <span className="font-semibold text-gray-900">
+                        Cliente/Mesa:
+                      </span>{" "}
+                      {order.user?.name ??
+                        order.mesa?.name ??
+                        (order.mesa?.number
+                          ? `Mesa ${order.mesa.number}`
+                          : "—")}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-gray-900">
+                        Tipo:
+                      </span>{" "}
+                      {order.mesa
+                        ? `Mesa ${order.mesa.number ?? ""}`.trim()
+                        : order.isPickup
+                          ? "Retirada"
+                          : "Entrega"}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-gray-900">
+                        Pagamento:
+                      </span>{" "}
+                      {order.paymentStatus} ·{" "}
+                      {paymentMethodLabel(order.paymentMethod)}
+                    </p>
+                    {order.assignedMotoboy && (
+                      <p>
+                        <span className="font-semibold text-gray-900">
+                          Motoboy:
+                        </span>{" "}
+                        {order.assignedMotoboy.name ?? order.assignedMotoboyId}
+                      </p>
+                    )}
+                    {order.deliveryFee != null && (
+                      <p>
+                        <span className="font-semibold text-gray-900">
+                          Frete:
+                        </span>{" "}
+                        {formatMoney(order.deliveryFee, locale || "pt-BR")}
+                      </p>
+                    )}
+                    {order.payment?.provider && (
+                      <p>
+                        <span className="font-semibold text-gray-900">
+                          Provedor:
+                        </span>{" "}
+                        {order.payment.provider}
+                        {order.payment.externalId
+                          ? ` · ${order.payment.externalId}`
+                          : ""}
+                      </p>
+                    )}
+                  </div>
+
                   {needsRefundFlag && (
                     <div className="mb-3 rounded-xl border border-red-200 bg-red-100 px-3 py-2 text-xs text-red-800 font-semibold">
                       ⚠️{" "}
@@ -477,13 +611,80 @@ function AdminOrderHistoryPage() {
                     </p>
                   )}
 
+                  {(order.deliveryLat != null || order.deliveryLon != null) && (
+                    <p className="mb-2 text-xs text-smoke">
+                      <span className="font-semibold text-gray-700">
+                        Coordenadas:
+                      </span>{" "}
+                      {order.deliveryLat ?? "—"}, {order.deliveryLon ?? "—"}
+                    </p>
+                  )}
+
                   {order.notes && (
                     <p className="mb-2 rounded-xl bg-gray-100 px-3 py-1.5 text-xs text-gray-700">
                       {t("ADMIN_HISTORY_NOTES", "Obs")}: {order.notes}
                     </p>
                   )}
 
-                  <ul className="space-y-1">
+                  <ul className="space-y-2">
+                    {order.items?.map((item) => {
+                      const addons = parseMaybeJson(item.addons);
+                      const addonList = Array.isArray(addons) ? addons : [];
+                      return (
+                        <li
+                          key={`detail-${item.id}`}
+                          className="rounded-xl bg-gray-50 px-3 py-2 text-sm"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <span className="text-gray-900">
+                              {item.product?.name ??
+                                item.productName ??
+                                t("ADMIN_HISTORY_ITEM", "Item")}
+                              <span className="ml-2 text-xs text-gray-500">
+                                × {item.quantity}
+                              </span>
+                              {item.product?.waiterOnly ? (
+                                <span className="ml-2 rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-bold text-cyan-700">
+                                  Somente garçom
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="text-sm font-semibold text-gray-900">
+                              {formatMoney(item.totalPrice, locale || "pt-BR")}
+                            </span>
+                          </div>
+                          <div className="mt-1 grid gap-1 text-xs text-gray-600 sm:grid-cols-2">
+                            <span>
+                              Unitário:{" "}
+                              {formatMoney(item.unitPrice, locale || "pt-BR")}
+                            </span>
+                            <span>Produto ID: {item.productId ?? "—"}</span>
+                          </div>
+                          {addonList.length > 0 && (
+                            <p className="mt-1 text-xs text-gray-600">
+                              <span className="font-semibold">
+                                Adicionais:
+                              </span>{" "}
+                              {addonList.map(formatAddon).join(", ")}
+                            </p>
+                          )}
+                          {item.removedIngredients && (
+                            <p className="mt-1 text-xs text-gray-600">
+                              <span className="font-semibold">Remover:</span>{" "}
+                              {item.removedIngredients}
+                            </p>
+                          )}
+                          {item.notes && (
+                            <p className="mt-1 rounded-lg bg-yellow-50 px-2 py-1 text-xs text-yellow-800">
+                              Obs do item: {item.notes}
+                            </p>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  <ul className="hidden">
                     {order.items?.map((item) => (
                       <li
                         key={item.id}
@@ -505,10 +706,7 @@ function AdminOrderHistoryPage() {
 
                   <p className="mt-3 text-right text-sm font-bold text-gray-900">
                     {t("ADMIN_HISTORY_TOTAL", "Total")}:{" "}
-                    {Number(order.total).toLocaleString(locale || "pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
+                    {formatMoney(order.total, locale || "pt-BR")}
                   </p>
                 </div>
               )}

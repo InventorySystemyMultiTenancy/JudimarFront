@@ -6,6 +6,7 @@ import ProductCustomizer from "../components/ProductCustomizer.jsx";
 import { useCart } from "../context/CartContext.jsx";
 import { useAuth } from "../hooks/useAuth.js";
 import { api } from "../lib/api.js";
+import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
 import {
   clearWaiterCalls,
   getWaiterCalls,
@@ -468,8 +469,10 @@ export default function AtendentePanel() {
   });
 
   const markPaidMutation = useMutation({
-    mutationFn: async (orderId) => {
-      const res = await api.patch(`/orders/${orderId}/mark-paid`);
+    mutationFn: async ({ orderId, paymentMethod }) => {
+      const res = await api.patch(`/orders/${orderId}/mark-paid`, {
+        paymentMethod,
+      });
       return res.data;
     },
     onSuccess: () => {
@@ -491,6 +494,18 @@ export default function AtendentePanel() {
   const handleMarkDelivered = useCallback(
     (orderId) => advanceMutation.mutate({ orderId, status: "ENTREGUE" }),
     [advanceMutation],
+  );
+
+  const handleMarkPaid = useCallback(
+    async (orderId) => {
+      const paymentMethod = await askPaymentMethod({
+        title: "Dar baixa / pago",
+        text: "Escolha a forma de pagamento recebida.",
+      });
+      if (!paymentMethod) return;
+      markPaidMutation.mutate({ orderId, paymentMethod });
+    },
+    [markPaidMutation],
   );
 
   const handleClearCalls = useCallback(() => {
@@ -857,7 +872,7 @@ export default function AtendentePanel() {
                           {order.paymentStatus !== "APROVADO" ? (
                             <button
                               type="button"
-                              onClick={() => markPaidMutation.mutate(order.id)}
+                              onClick={() => handleMarkPaid(order.id)}
                               disabled={markPaidMutation.isPending}
                               className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
                             >

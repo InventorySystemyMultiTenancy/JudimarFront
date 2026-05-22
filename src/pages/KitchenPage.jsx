@@ -5,6 +5,7 @@ import { useAuth } from "../hooks/useAuth.js";
 import EstimatedTimeBadge from "../components/EstimatedTimeBadge.jsx";
 import toast from "react-hot-toast";
 import { api } from "../lib/api.js";
+import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
 import {
   getDesktopNotificationsEnabled,
   requestDesktopNotificationPermission,
@@ -703,8 +704,16 @@ function KitchenPage() {
     variables: paymentVars,
     isPending: isPaymentPending,
   } = useMutation({
-    mutationFn: async ({ orderId, paymentStatus, advanceTo }) => {
-      await api.patch(`/orders/${orderId}/payment-status`, { paymentStatus });
+    mutationFn: async ({
+      orderId,
+      paymentStatus,
+      paymentMethod,
+      advanceTo,
+    }) => {
+      await api.patch(`/orders/${orderId}/payment-status`, {
+        paymentStatus,
+        ...(paymentMethod ? { paymentMethod } : {}),
+      });
       if (advanceTo) {
         await api.patch(`/orders/${orderId}/status`, { status: advanceTo });
       }
@@ -775,6 +784,22 @@ function KitchenPage() {
       return visibleOrders.filter((o) => o.status === columnKey);
     },
     [visibleOrders],
+  );
+
+  const handleConfirmPayment = useCallback(
+    async (orderId) => {
+      const paymentMethod = await askPaymentMethod({
+        title: "Confirmar pagamento",
+        text: "Escolha a forma de pagamento recebida.",
+      });
+      if (!paymentMethod) return;
+      setPaymentStatus({
+        orderId,
+        paymentStatus: "APROVADO",
+        paymentMethod,
+      });
+    },
+    [setPaymentStatus],
   );
 
   const stageCounts = useMemo(
@@ -1146,11 +1171,7 @@ function KitchenPage() {
                         }
                         onConfirmPayment={
                           isVirtual && col.key === "AGUARDANDO_PAGAMENTO"
-                            ? (orderId) =>
-                                setPaymentStatus({
-                                  orderId,
-                                  paymentStatus: "APROVADO",
-                                })
+                            ? handleConfirmPayment
                             : undefined
                         }
                         onPayLater={

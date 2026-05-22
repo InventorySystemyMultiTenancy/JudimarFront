@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import Swal from "sweetalert2";
 import { api } from "../lib/api.js";
+import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
 import { useTranslation } from "../context/I18nContext.jsx";
 
 const currency = (v) =>
@@ -78,30 +78,27 @@ function MotoboyPage() {
   };
 
   const handleMarkAsPaid = async (orderId) => {
-    const confirmResult = await Swal.fire({
+    const paymentMethod = await askPaymentMethod({
       title: t("MOTOBOY_CONFIRM_PAYMENT_TITLE", "Confirmar pagamento?"),
       text: t(
         "MOTOBOY_CONFIRM_PAYMENT_TEXT",
         "Marque como pago somente após receber o valor do cliente.",
       ),
-      icon: "question",
-      showCancelButton: true,
       confirmButtonText: t(
         "MOTOBOY_CONFIRM_PAYMENT_YES",
         "Sim, marcar como pago",
       ),
       cancelButtonText: t("BTN_CANCEL", "Cancelar"),
-      confirmButtonColor: "#0f172a",
     });
 
-    if (!confirmResult.isConfirmed) {
+    if (!paymentMethod) {
       return;
     }
 
     setMarkingPaidByOrderId((prev) => ({ ...prev, [orderId]: true }));
 
     try {
-      await api.patch(`/orders/${orderId}/mark-paid`);
+      await api.patch(`/orders/${orderId}/mark-paid`, { paymentMethod });
       toast.success(
         t("MOTOBOY_PAYMENT_MARKED", "Pagamento marcado como aprovado."),
       );
