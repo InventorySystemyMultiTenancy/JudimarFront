@@ -37,12 +37,6 @@ const COLUMNS = [
     color: "border-amber-500/40 bg-amber-500/10",
   },
   {
-    key: "RECEBIDO",
-    label: "Recebido",
-    next: "PREPARANDO",
-    color: "border-blue-500/40 bg-blue-500/10",
-  },
-  {
     key: "PREPARANDO",
     label: "Preparando",
     next: "PRONTO",
@@ -91,8 +85,24 @@ const NEXT_LABEL = {
   SAIU_PARA_ENTREGA: "Marcar Entregue",
 };
 
-function getNextStageKey(status) {
+function getNextStageKey(status, order) {
+  if ((order?.mesaId || order?.isPickup) && status === "PREPARANDO") {
+    return "SAIU_PARA_ENTREGA";
+  }
+
   return STAGES.find((stage) => stage.key === status)?.next ?? null;
+}
+
+function getNextColumnKey(status, order) {
+  if (order?.mesaId && status === "PREPARANDO") {
+    return "LEVAR_PARA_MESA";
+  }
+
+  if (order?.isPickup && status === "PREPARANDO") {
+    return "RETIRADA_PRONTA";
+  }
+
+  return getNextStageKey(status, order);
 }
 
 const formatTime = (iso) =>
@@ -107,6 +117,49 @@ function getKitchenItems(order) {
 
 function hasKitchenItems(order) {
   return getKitchenItems(order).length > 0;
+}
+
+function getProductImage(item) {
+  return (
+    item?.product?.imageUrl ??
+    item?.product?.image ??
+    item?.product?.photo ??
+    item?.imageUrl ??
+    item?.image ??
+    ""
+  );
+}
+
+function toKitchenAlertText(value) {
+  if (!value) return "";
+
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) =>
+        typeof entry === "string"
+          ? entry
+          : (entry?.name ?? entry?.label ?? entry?.title ?? ""),
+      )
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  if (typeof value === "object") {
+    return Object.values(value).filter(Boolean).join(", ");
+  }
+
+  return String(value);
+}
+
+function KitchenAlertStrip({ label, value }) {
+  const text = toKitchenAlertText(value);
+  if (!text) return null;
+
+  return (
+    <div className="mt-2 rounded-xl border-2 border-red-700 bg-red-600 px-3 py-2 text-base font-black uppercase leading-snug text-white shadow-sm">
+      {label}: {text.toLocaleUpperCase("pt-BR")}
+    </div>
+  );
 }
 
 function OrderCard({
@@ -138,13 +191,19 @@ function OrderCard({
     !order.isPickup &&
     !order.mesaId &&
     !!onConfirmDelivery;
-  const hasNext = !!stage?.next && !onConfirmPayment && !needsCodeConfirm;
+  const nextStatus = getNextStageKey(order.status, order);
+  const hasNext = !!nextStatus && !onConfirmPayment && !needsCodeConfirm;
   const eta = getOrderEta(order, now);
   const isPaymentPending = order.paymentStatus === "PENDENTE";
+  const kitchenItems = getKitchenItems(order);
 
   const advanceLabel = advancing
     ? t("KITCHEN_UPDATING", "Atualizando...")
-    : order.mesaId && order.status === "PRONTO"
+    : order.mesaId && order.status === "PREPARANDO"
+      ? t("KITCHEN_ADVANCE_TO_TABLE", "Levar para a Mesa")
+      : order.isPickup && order.status === "PREPARANDO"
+        ? t("KITCHEN_READY_PICKUP", "Pronto p/ Retirada")
+      : order.mesaId && order.status === "PRONTO"
       ? t("KITCHEN_ADVANCE_TO_TABLE", "Levar para a Mesa")
       : order.mesaId && order.status === "SAIU_PARA_ENTREGA"
         ? t("KITCHEN_DELIVERED_AT_TABLE", "Entregue na Mesa")
@@ -159,7 +218,7 @@ function OrderCard({
       draggable={hasNext && !advancing}
       onDragStart={() => onDragStart(order)}
       onDragEnd={onDragEnd}
-      className={`rounded-2xl border p-4 transition-all duration-200 ${
+      className={`rounded-2xl border-2 p-4 shadow-sm transition-all duration-200 ${
         isFresh
           ? "animate-pulse border-gold/60 bg-gold/10 shadow-[0_0_18px_rgba(212,169,77,0.2)]"
           : eta?.isOverdue
@@ -167,28 +226,30 @@ function OrderCard({
             : (stage?.color ?? "border-amber-500/40 bg-amber-500/10")
       } ${dragging ? "cursor-grabbing opacity-60" : hasNext ? "cursor-grab" : "cursor-default"}`}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-500">
+          <p className="text-2xl font-black uppercase tracking-wide text-gray-900">
             #{order.id.slice(-6).toUpperCase()}
           </p>
-          <p className="mt-0.5 text-sm font-semibold text-gray-900">
+          <p className="mt-1 text-lg font-black text-gray-950">
             {order.mesa
               ? order.mesa.name
               : (order.user?.name ?? t("CLIENT_DASHBOARD_CLIENT", "Cliente"))}
           </p>
-          <p className="text-xs text-gray-600">{formatTime(order.createdAt)}</p>
+          <p className="text-xl font-bold text-gray-700">
+            {formatTime(order.createdAt)}
+          </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col items-end gap-2">
           <span
-            className={`shrink-0 rounded-xl px-2 py-1 text-xs font-bold ${
+            className={`shrink-0 rounded-xl px-3 py-2 text-base font-black ${
               STAGE_BADGE[order.status] ?? "bg-gray-200 text-gray-900"
             }`}
           >
             {order.status.replace(/_/g, " ")}
           </span>
           <span
-            className={`rounded-xl px-2 py-0.5 text-[10px] font-bold ${
+            className={`rounded-xl px-3 py-1.5 text-sm font-black ${
               order.mesa
                 ? "bg-amber-100 text-amber-700"
                 : order.isPickup
@@ -203,7 +264,7 @@ function OrderCard({
                 : `🛵 ${t("KITCHEN_DELIVERY", "Entrega")}`}
           </span>
           {isPaymentPending && !onConfirmPayment && (
-            <span className="rounded-xl bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+            <span className="rounded-xl bg-amber-100 px-3 py-1.5 text-sm font-black text-amber-700">
               💰 {t("KITCHEN_PAYMENT_PENDING", "Pag. pendente")}
             </span>
           )}
@@ -211,48 +272,71 @@ function OrderCard({
       </div>
 
       {isFresh ? (
-        <div className="mt-3 inline-flex rounded-full border border-gold/40 bg-gold/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-gold">
+        <div className="mt-4 inline-flex rounded-full border border-gold/40 bg-gold/10 px-4 py-2 text-sm font-black uppercase tracking-[0.18em] text-gold">
           {t("KITCHEN_NEW_ORDER", "Novo pedido")}
         </div>
       ) : null}
 
-      <div className="mt-3">
+      <div className="mt-4 text-base">
         <EstimatedTimeBadge compact now={now} order={order} />
       </div>
 
       {/* Items */}
-      <ul className="mt-3 space-y-1 border-t border-gray-200 pt-3">
-        {order.items?.map((item) => (
-          <li key={item.id} className="text-sm">
-            <span className="text-gray-900">
-              {item.product?.name ?? t("CLIENT_DASHBOARD_ITEM", "Item")}
-            </span>
-            <span className="ml-2 text-xs text-gray-600">
-              &times; {item.quantity}
-            </span>
+      <ul className="mt-4 space-y-4 border-t-2 border-gray-300 pt-4">
+        {kitchenItems.map((item) => (
+          <li
+            key={item.id}
+            className="rounded-2xl border border-gray-200 bg-white/80 p-3"
+          >
+            <div className="flex gap-4">
+              <div className="h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
+                {getProductImage(item) ? (
+                  <img
+                    src={getProductImage(item)}
+                    alt={item.product?.name ?? "Produto"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center px-2 text-center text-sm font-bold uppercase text-gray-500">
+                    Sem foto
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="block text-2xl font-black leading-tight text-gray-950">
+                  {item.product?.name ?? t("CLIENT_DASHBOARD_ITEM", "Item")}
+                </span>
+                <span className="mt-2 inline-flex rounded-xl bg-gray-900 px-3 py-1 text-2xl font-black text-white">
+                  QTD {item.quantity}
+                </span>
+              </div>
+            </div>
             {item.notes && (
-              <p className="mt-0.5 rounded-lg bg-yellow-50 px-2 py-0.5 text-xs text-yellow-800">
+              <p className="mt-2 rounded-xl border-2 border-red-700 bg-red-600 px-3 py-2 text-base font-black uppercase leading-snug text-white shadow-sm">
                 ⚠ {item.notes}
               </p>
             )}
+            <KitchenAlertStrip label="Adicionais" value={item.addons} />
+            <KitchenAlertStrip
+              label="Remover"
+              value={item.removedIngredients}
+            />
           </li>
         ))}
       </ul>
 
       {order.notes && (
-        <p className="mt-2 rounded-xl bg-gray-200 px-3 py-1.5 text-xs text-gray-700">
-          {t("ADMIN_HISTORY_NOTES", "Obs")}: {order.notes}
-        </p>
+        <KitchenAlertStrip label="Obs do pedido" value={order.notes} />
       )}
 
       {/* Payment pending column actions */}
       {onConfirmPayment && (
-        <div className="mt-4 flex gap-2">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <button
             type="button"
             disabled={confirmingPayment}
             onClick={() => onConfirmPayment(order.id)}
-            className="flex-1 rounded-2xl bg-gradient-to-r from-green-600 to-green-500 py-3 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50"
+            className="min-h-16 rounded-2xl bg-green-600 px-4 py-4 text-lg font-black text-white transition hover:bg-green-700 disabled:opacity-50"
           >
             {confirmingPayment
               ? "..."
@@ -262,7 +346,7 @@ function OrderCard({
             type="button"
             disabled={confirmingPayment}
             onClick={() => onPayLater(order.id)}
-            className="flex-1 rounded-2xl border-2 border-amber-400 bg-amber-50 py-3 text-sm font-bold text-amber-800 transition hover:bg-amber-100 disabled:opacity-50"
+            className="min-h-16 rounded-2xl border-2 border-amber-500 bg-amber-50 px-4 py-4 text-lg font-black text-amber-900 transition hover:bg-amber-100 disabled:opacity-50"
           >
             {confirmingPayment
               ? "..."
@@ -276,8 +360,8 @@ function OrderCard({
         <button
           type="button"
           disabled={advancing}
-          onClick={() => onAdvance(order.id, stage.next)}
-          className="mt-4 w-full rounded-2xl bg-gradient-to-r from-ember to-red-500 py-3 text-sm font-bold text-gray-900 transition hover:opacity-90 disabled:opacity-50"
+          onClick={() => onAdvance(order.id, nextStatus)}
+          className="mt-5 min-h-20 w-full rounded-2xl bg-green-600 px-4 py-5 text-2xl font-black uppercase text-white transition hover:bg-green-700 disabled:opacity-50"
         >
           {advanceLabel}
         </button>
@@ -420,6 +504,7 @@ function KitchenPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const isKitchenUser = user?.role === "COZINHA";
   const canLoadMotoboys = ["ADMIN", "FUNCIONARIO", "COZINHA"].includes(
     user?.role,
   );
@@ -437,6 +522,7 @@ function KitchenPage() {
     const cached = localStorage.getItem(SOUND_STORAGE_KEY);
     return cached === null ? true : cached === "true";
   });
+  const effectiveSoundEnabled = isKitchenUser || soundEnabled;
   const previousOverdueIdsRef = useRef([]);
 
   useEffect(() => {
@@ -450,8 +536,14 @@ function KitchenPage() {
   }, []);
 
   useEffect(() => {
+    if (isKitchenUser) {
+      localStorage.setItem(SOUND_STORAGE_KEY, "true");
+      setDesktopNotificationsEnabled(true);
+      return;
+    }
+
     localStorage.setItem(SOUND_STORAGE_KEY, String(soundEnabled));
-  }, [soundEnabled]);
+  }, [isKitchenUser, soundEnabled]);
 
   const handleDesktopToggle = async () => {
     if (!supportsDesktopNotifications()) {
@@ -474,7 +566,8 @@ function KitchenPage() {
     setDraggedOrder({
       id: order.id,
       status: order.status,
-      nextStatus: getNextStageKey(order.status),
+      nextStatus: getNextStageKey(order.status, order),
+      dropColumnKey: getNextColumnKey(order.status, order),
     });
   };
 
@@ -539,7 +632,7 @@ function KitchenPage() {
         return [payload.orderId, ...next];
       });
 
-      if (soundEnabled) {
+      if (effectiveSoundEnabled) {
         playKitchenAlertTone("new-order");
       }
 
@@ -566,11 +659,11 @@ function KitchenPage() {
         window.clearTimeout(timeoutId);
       }
     };
-  }, [soundEnabled]);
+  }, [effectiveSoundEnabled]);
 
   useEffect(() => {
     const handleRealtimeReconnected = () => {
-      if (soundEnabled) {
+      if (effectiveSoundEnabled) {
         playKitchenAlertTone("reconnected");
       }
     };
@@ -586,7 +679,7 @@ function KitchenPage() {
         handleRealtimeReconnected,
       );
     };
-  }, [soundEnabled]);
+  }, [effectiveSoundEnabled]);
 
   const {
     data: orders = [],
@@ -752,17 +845,9 @@ function KitchenPage() {
         // Mesa orders never ficam aqui — vão direto pro status real
         return visibleOrders.filter(
           (o) =>
-            o.status === "RECEBIDO" &&
+            (o.status === "RECEBIDO" || o.status === "PREPARANDO") &&
             o.paymentStatus === "PENDENTE" &&
             !o.mesaId,
-        );
-      }
-      if (columnKey === "RECEBIDO") {
-        // Mesa orders aparecem aqui mesmo com pagamento pendente
-        return visibleOrders.filter(
-          (o) =>
-            o.status === "RECEBIDO" &&
-            (o.paymentStatus !== "PENDENTE" || !!o.mesaId),
         );
       }
       if (columnKey === "SAIU_PARA_ENTREGA") {
@@ -819,7 +904,7 @@ function KitchenPage() {
       (orderId) => !previousIds.includes(orderId),
     );
 
-    if (newOverdueIds.length && soundEnabled) {
+    if (newOverdueIds.length && effectiveSoundEnabled) {
       playKitchenAlertTone("overdue");
       toast.error(
         t(
@@ -830,7 +915,7 @@ function KitchenPage() {
     }
 
     previousOverdueIdsRef.current = overdueIds;
-  }, [overdueIds, soundEnabled, t]);
+  }, [overdueIds, effectiveSoundEnabled, t]);
 
   useEffect(() => {
     const changedKeys = stageCounts
@@ -862,6 +947,77 @@ function KitchenPage() {
     );
   }, [stageCounts]);
 
+  const visibleColumnKeys =
+    isKitchenUser
+      ? ["PREPARANDO"]
+      : user?.role === "ATENDENTE"
+        ? ["LEVAR_PARA_MESA"]
+        : user?.role === "FUNCIONARIO"
+          ? [
+              "AGUARDANDO_PAGAMENTO",
+              "PRONTO",
+              "SAIU_PARA_ENTREGA",
+              "RETIRADA_PRONTA",
+            ]
+          : null;
+  const visibleColumns = visibleColumnKeys
+    ? COLUMNS.filter((column) => visibleColumnKeys.includes(column.key))
+    : COLUMNS;
+  const visibleStageCounts = stageCounts.filter((stage) =>
+    visibleColumns.some((column) => column.key === stage.key),
+  );
+  const showStageSummary = !isKitchenUser;
+  const showWaiterCalls = !isKitchenUser;
+  const showHeaderDetails = !isKitchenUser;
+  const kitchenPreparingOrders = useMemo(() => {
+    if (!isKitchenUser) return [];
+
+    return getColumnOrders("PREPARANDO").sort((a, b) =>
+      compareOrdersByUrgency(a, b, currentNow),
+    );
+  }, [currentNow, getColumnOrders, isKitchenUser]);
+
+  if (isKitchenUser) {
+    return (
+      <main className="min-h-screen bg-ink p-4 text-gray-900 sm:p-6">
+        {!isLoading && !isError && (
+          <>
+            {kitchenPreparingOrders.length === 0 ? (
+              <div className="flex min-h-[calc(100vh-2rem)] items-center justify-center text-center sm:min-h-[calc(100vh-3rem)]">
+                <div className="rounded-3xl border-2 border-dashed border-gray-300 bg-white/45 px-8 py-10 shadow-sm">
+                  <p className="text-5xl font-black uppercase text-gray-900">
+                    Sem pedidos no momento
+                  </p>
+                  <p className="mt-4 text-2xl font-bold text-gray-600">
+                    A cozinha esta aguardando novos pedidos.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
+                {kitchenPreparingOrders.map((order) => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    now={currentNow}
+                    isFresh={freshOrderIds.includes(order.id)}
+                    dragging={false}
+                    advancing={isPending && advancingVars?.orderId === order.id}
+                    onDragStart={() => {}}
+                    onDragEnd={() => {}}
+                    onAdvance={(orderId, status) =>
+                      advance({ orderId, status })
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-ink px-4 py-6 text-gray-900 sm:px-6">
       {/* Header */}
@@ -870,6 +1026,8 @@ function KitchenPage() {
           <h1 className="font-display text-3xl text-gold">
             {t("KITCHEN_TITLE", "Cozinha")}
           </h1>
+          {showHeaderDetails && (
+            <>
           <p className="mt-1 text-xs text-smoke">
             {t(
               "KITCHEN_UPDATED_AT",
@@ -898,6 +1056,8 @@ function KitchenPage() {
               ? t("ADMIN_PANEL_DESKTOP_ON", "notificacoes ativas")
               : t("ADMIN_PANEL_DESKTOP_OFF", "notificacoes inativas")}
           </p>
+            </>
+          )}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <button
@@ -955,33 +1115,44 @@ function KitchenPage() {
         </div>
       </header>
 
-      <section className="mb-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
-        {stageCounts.map((stage) => {
-          const changed = changedStageKeys.includes(stage.key);
+      {showStageSummary && (
+        <section
+          className={`mb-5 grid gap-3 ${
+            visibleColumns.length === 3
+              ? "grid-cols-1 md:grid-cols-3"
+              : visibleColumns.length === 1
+                ? "grid-cols-1"
+                : "sm:grid-cols-3 xl:grid-cols-6"
+          }`}
+        >
+          {visibleStageCounts.map((stage) => {
+            const changed = changedStageKeys.includes(stage.key);
 
-          return (
-            <article
-              key={stage.key}
-              className={`rounded-2xl border p-4 transition-all duration-300 ${
-                changed
-                  ? "scale-[1.02] border-gold/50 bg-gold/10 shadow-glow"
-                  : "border-gray-200 bg-lacquer/50"
-              }`}
-            >
-              <p className="text-xs uppercase tracking-[0.2em] text-smoke">
-                {t(`KITCHEN_COLUMN_${stage.key}`, stage.label)}
-              </p>
-              <p className="mt-2 font-display text-3xl text-gray-900">
-                {stage.count}
-              </p>
-              <p className="mt-1 text-xs text-smoke">
-                {t("KITCHEN_ORDERS_IN_STAGE", "Pedidos nesta etapa")}
-              </p>
-            </article>
-          );
-        })}
-      </section>
+            return (
+              <article
+                key={stage.key}
+                className={`rounded-2xl border p-4 transition-all duration-300 ${
+                  changed
+                    ? "scale-[1.02] border-gold/50 bg-gold/10 shadow-glow"
+                    : "border-gray-200 bg-lacquer/50"
+                }`}
+              >
+                <p className="text-xs uppercase tracking-[0.2em] text-smoke">
+                  {t(`KITCHEN_COLUMN_${stage.key}`, stage.label)}
+                </p>
+                <p className="mt-2 font-display text-3xl text-gray-900">
+                  {stage.count}
+                </p>
+                <p className="mt-1 text-xs text-smoke">
+                  {t("KITCHEN_ORDERS_IN_STAGE", "Pedidos nesta etapa")}
+                </p>
+              </article>
+            );
+          })}
+        </section>
+      )}
 
+      {showWaiterCalls && (
       <section className="mb-5 rounded-2xl border border-gold/20 bg-lacquer/60 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -1041,6 +1212,7 @@ function KitchenPage() {
           ) : null}
         </div>
       </section>
+      )}
 
       {latestAlert ? (
         <div className="mb-4 flex items-center justify-between gap-4 rounded-2xl border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-gold">
@@ -1090,14 +1262,21 @@ function KitchenPage() {
 
       {/* Kanban columns */}
       {!isLoading && !isError && (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-7">
-          {COLUMNS.map((col) => {
+        <div
+          className={`grid gap-6 ${
+            visibleColumns.length === 3
+              ? "grid-cols-1 lg:grid-cols-3"
+              : visibleColumns.length === 1
+                ? "grid-cols-1"
+              : "sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-7"
+          }`}
+        >
+          {visibleColumns.map((col) => {
             const isVirtual = col.virtual;
             const stageOrders = getColumnOrders(col.key).sort((a, b) =>
               compareOrdersByUrgency(a, b, currentNow),
             );
-            const canDropHere =
-              !isVirtual && draggedOrder?.nextStatus === col.key;
+            const canDropHere = draggedOrder?.dropColumnKey === col.key;
             const isDropActive = activeDropStage === col.key && canDropHere;
 
             return (
@@ -1112,11 +1291,14 @@ function KitchenPage() {
                   if (activeDropStage === col.key) setActiveDropStage(null);
                 }}
                 onDrop={() => {
-                  if (!draggedOrder || draggedOrder.nextStatus !== col.key) {
+                  if (!draggedOrder || draggedOrder.dropColumnKey !== col.key) {
                     handleDragEnd();
                     return;
                   }
-                  advance({ orderId: draggedOrder.id, status: col.key });
+                  advance({
+                    orderId: draggedOrder.id,
+                    status: draggedOrder.nextStatus,
+                  });
                   handleDragEnd();
                 }}
                 className={`rounded-3xl transition-all duration-200 ${
