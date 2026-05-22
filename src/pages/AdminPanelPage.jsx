@@ -57,12 +57,14 @@ function AdminPanelPage() {
 
   const currentNow = useMemo(() => new Date(now), [now]);
 
-  // Mesas com pagamento pendente (derivado da mesma query, sem request extra)
-  const pendingMesaOrders = useMemo(() => {
+  // Mesas e comandas com pagamento pendente (derivado da mesma query)
+  const pendingPaymentOrders = useMemo(() => {
     if (!data) return [];
     return data.filter(
       (o) =>
-        o.mesaId && o.paymentStatus !== "APROVADO" && o.status !== "CANCELADO",
+        (o.mesaId || o.comandaId) &&
+        o.paymentStatus !== "APROVADO" &&
+        o.status !== "CANCELADO",
     );
   }, [data]);
 
@@ -498,7 +500,7 @@ function AdminPanelPage() {
           </ul>
         </section>
 
-        {/* Mesas com pagamento pendente */}
+        {/* Mesas e comandas com pagamento pendente */}
         <section className="rounded-3xl border border-amber-400/30 bg-lacquer/70 p-4 sm:p-6">
           <div className="flex items-center gap-2">
             <h2 className="font-display text-xl text-amber-500">
@@ -508,22 +510,26 @@ function AdminPanelPage() {
                 "Pagamentos Pendentes",
               )}
             </h2>
-            {pendingMesaOrders.length > 0 && (
+            {pendingPaymentOrders.length > 0 && (
               <span className="animate-pulse rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
-                {pendingMesaOrders.length}
+                {pendingPaymentOrders.length}
               </span>
             )}
           </div>
           <ul className="mt-4 space-y-3 text-sm">
-            {pendingMesaOrders.map((order) => (
+            {pendingPaymentOrders.map((order) => (
               <li
                 key={order.id}
                 className="rounded-xl border border-amber-400/40 bg-amber-50 p-3"
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-semibold text-amber-800">
-                    {order.mesa?.name ??
-                      t("ADMIN_PANEL_MESA_LABEL_JUDIMAR", "Mesa")}
+                    {order.mesa
+                      ? (order.mesa.name ??
+                        t("ADMIN_PANEL_MESA_LABEL_JUDIMAR", "Mesa"))
+                      : order.comanda
+                        ? `Comanda ${order.comanda.number}`
+                        : "Comanda"}
                   </p>
                   <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
                     {currency(order.total)}
@@ -538,11 +544,11 @@ function AdminPanelPage() {
                 </p>
               </li>
             ))}
-            {!pendingMesaOrders.length && !isLoading ? (
+            {!pendingPaymentOrders.length && !isLoading ? (
               <li className="text-sm text-smoke">
                 {t(
                   "ADMIN_PANEL_NO_PENDING_PAYMENTS_JUDIMAR",
-                  "Nenhuma mesa com pagamento pendente.",
+                  "Nenhuma mesa ou comanda com pagamento pendente.",
                 )}
               </li>
             ) : null}
