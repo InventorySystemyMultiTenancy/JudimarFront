@@ -10,6 +10,7 @@ const emptyForm = () => ({
   description: "",
   imageUrl: "",
   category: "",
+  availableDays: [],
   singlePrice: "",
   singleCostPrice: "",
 });
@@ -24,6 +25,23 @@ const I18N_URL =
   "https://tradudor-i8n-languages.onrender.com";
 const I18N_SISTEMA = "website";
 const ALL_LOCALES = ["pt-BR", "pt-PT", "en-US", "it-IT", "es-ES", "ar-MA"];
+const WEEKDAY_OPTIONS = [
+  { value: "MON", label: "Seg" },
+  { value: "TUE", label: "Ter" },
+  { value: "WED", label: "Qua" },
+  { value: "THU", label: "Qui" },
+  { value: "FRI", label: "Sex" },
+  { value: "SAT", label: "Sab" },
+  { value: "SUN", label: "Dom" },
+];
+
+function formatAvailableDays(days) {
+  if (!Array.isArray(days) || days.length === 0) return "Todos os dias";
+  const labelByValue = Object.fromEntries(
+    WEEKDAY_OPTIONS.map((day) => [day.value, day.label]),
+  );
+  return days.map((day) => labelByValue[day] ?? day).join(", ");
+}
 
 function isDebugEnabled() {
   if (typeof window === "undefined") return false;
@@ -140,6 +158,9 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
       description: product.description ?? "",
       imageUrl: product.imageUrl ?? "",
       category: product.category ?? "",
+      availableDays: Array.isArray(product.availableDays)
+        ? product.availableDays
+        : [],
       singlePrice: firstSize?.price != null ? String(firstSize.price) : "",
       singleCostPrice:
         firstSize?.costPrice != null ? String(firstSize.costPrice) : "",
@@ -210,6 +231,15 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
     return !Object.keys(errs).length;
   };
 
+  const toggleAvailableDay = (day) => {
+    setForm((prev) => ({
+      ...prev,
+      availableDays: prev.availableDays.includes(day)
+        ? prev.availableDays.filter((value) => value !== day)
+        : [...prev.availableDays, day],
+    }));
+  };
+
   const onSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
@@ -218,6 +248,7 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
       description: form.description.trim() || undefined,
       imageUrl: form.imageUrl.trim() || undefined,
       category: form.category.trim() || undefined,
+      availableDays: form.availableDays,
       sizes: [
         {
           size: "GRANDE",
@@ -302,6 +333,39 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
                 <option key={cat} value={cat} />
               ))}
             </datalist>
+          </div>
+
+          {/* Available days */}
+          <div>
+            <label className="mb-2 block text-xs uppercase tracking-widest text-smoke">
+              Dias em que aparece no cardapio
+            </label>
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+              {WEEKDAY_OPTIONS.map((day) => {
+                const checked = form.availableDays.includes(day.value);
+                return (
+                  <label
+                    key={day.value}
+                    className={`flex cursor-pointer items-center justify-center rounded-xl border px-2 py-2 text-xs font-semibold transition ${
+                      checked
+                        ? "border-gold bg-gold/15 text-gold"
+                        : "border-gray-200 bg-gray-100 text-gray-700 hover:border-gold/40"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleAvailableDay(day.value)}
+                      className="sr-only"
+                    />
+                    {day.label}
+                  </label>
+                );
+              })}
+            </div>
+            <p className="mt-1 text-xs text-smoke">
+              Se nao marcar nenhum dia, o produto aparece todos os dias.
+            </p>
           </div>
 
           {/* Image URL */}
@@ -574,6 +638,9 @@ function ProductCard({ product, onEdit }) {
             {translatedCategory}
           </span>
         ) : null}
+        <span className="rounded-xl bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700">
+          {formatAvailableDays(product.availableDays)}
+        </span>
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2">
