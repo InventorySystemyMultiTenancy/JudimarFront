@@ -100,6 +100,14 @@ const formatTime = (iso) =>
     minute: "2-digit",
   });
 
+function getKitchenItems(order) {
+  return (order.items ?? []).filter((item) => !item.product?.waiterOnly);
+}
+
+function hasKitchenItems(order) {
+  return getKitchenItems(order).length > 0;
+}
+
 function OrderCard({
   order,
   onAdvance,
@@ -621,10 +629,19 @@ function KitchenPage() {
   });
 
   const visibleOrders = useMemo(
-    () =>
-      user?.role === "MOTOBOY"
-        ? orders.filter((o) => o.assignedMotoboyId === user.id)
-        : orders,
+    () => {
+      const roleFiltered =
+        user?.role === "MOTOBOY"
+          ? orders.filter((o) => o.assignedMotoboyId === user.id)
+          : orders;
+
+      return roleFiltered
+        .map((order) => ({
+          ...order,
+          items: getKitchenItems(order),
+        }))
+        .filter(hasKitchenItems);
+    },
     [orders, user],
   );
 
