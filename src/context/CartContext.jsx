@@ -40,10 +40,19 @@ const normalizeItem = (item) => {
   const addons = Array.isArray(item?.addons) ? item.addons : [];
   const removals = Array.isArray(item?.removals) ? item.removals : [];
   const observation = item?.observation ?? item?.notes ?? "";
+  const priceVariant = item?.priceVariant ?? item?.payload?.priceVariant ?? null;
+  const priceVariantLabel =
+    item?.priceVariantLabel ??
+    (priceVariant === "COMERCIAL"
+      ? "Comercial"
+      : priceVariant === "PRATO_FEITO"
+        ? "Prato feito"
+        : "");
   const quantity = Math.max(1, Number(item?.quantity || 1));
 
   const fallbackKey = [
     id,
+    priceVariant || "",
     addons
       .map((addon) => addon?.id || addon?.nome)
       .filter(Boolean)
@@ -58,6 +67,8 @@ const normalizeItem = (item) => {
     id,
     nome,
     price,
+    priceVariant,
+    priceVariantLabel,
     addons,
     removals,
     observation,

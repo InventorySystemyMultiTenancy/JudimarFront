@@ -351,6 +351,17 @@ function OrderCard({
                 >
                   QTD {item.quantity}
                 </span>
+                {item.priceVariant && (
+                  <span
+                    className={`ml-2 mt-2 inline-flex rounded-xl bg-amber-500 font-black uppercase text-gray-950 ${
+                      largeMode ? "px-3 py-1 text-xl" : "px-2 py-0.5 text-sm"
+                    }`}
+                  >
+                    {item.priceVariant === "PRATO_FEITO"
+                      ? "Prato feito"
+                      : "Comercial"}
+                  </span>
+                )}
               </div>
             </div>
             {item.notes && (

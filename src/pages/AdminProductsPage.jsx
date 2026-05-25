@@ -13,6 +13,9 @@ const emptyForm = () => ({
   category: "",
   availableDays: [],
   waiterOnly: false,
+  hasPriceVariants: false,
+  commercialPrice: "",
+  pratoFeitoPrice: "",
   singlePrice: "",
   singleCostPrice: "",
 });
@@ -96,6 +99,11 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
         ? product.availableDays
         : [],
       waiterOnly: Boolean(product.waiterOnly),
+      hasPriceVariants: Boolean(product.hasPriceVariants),
+      commercialPrice:
+        product.commercialPrice != null ? String(product.commercialPrice) : "",
+      pratoFeitoPrice:
+        product.pratoFeitoPrice != null ? String(product.pratoFeitoPrice) : "",
       singlePrice: firstSize?.price != null ? String(firstSize.price) : "",
       singleCostPrice:
         firstSize?.costPrice != null ? String(firstSize.costPrice) : "",
@@ -124,7 +132,8 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
     },
     onError: (err) => {
       toast.error(
-        err?.response?.data?.message ??
+        err?.response?.data?.error?.message ??
+          err?.response?.data?.message ??
           t("ADMIN_PRODUCTS_SAVE_ERROR", "Erro ao salvar produto"),
       );
     },
@@ -171,10 +180,19 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
       category: form.category.trim() || undefined,
       availableDays: form.availableDays,
       waiterOnly: form.waiterOnly,
+      hasPriceVariants: form.hasPriceVariants,
+      ...(form.hasPriceVariants
+        ? {
+            commercialPrice: Number(form.commercialPrice),
+            pratoFeitoPrice: Number(form.pratoFeitoPrice),
+          }
+        : {}),
       sizes: [
         {
           size: "GRANDE",
-          price: Number(form.singlePrice),
+          price: Number(
+            form.hasPriceVariants ? form.commercialPrice : form.singlePrice,
+          ),
           ...(form.singleCostPrice !== ""
             ? { costPrice: Number(form.singleCostPrice) }
             : {}),
@@ -339,8 +357,98 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
             )}
           </div>
 
-          {/* Sale Price + Cost Price + Stock Minimum */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-900">
+            <input
+              type="checkbox"
+              checked={form.hasPriceVariants}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  hasPriceVariants: e.target.checked,
+                  commercialPrice: e.target.checked
+                    ? prev.commercialPrice || prev.singlePrice
+                    : prev.commercialPrice,
+                  singlePrice: e.target.checked
+                    ? prev.commercialPrice || prev.singlePrice
+                    : prev.singlePrice,
+                }))
+              }
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-gold focus:ring-gold/30"
+            />
+            <span>
+              <span className="block text-xs font-semibold uppercase tracking-widest text-smoke">
+                Produto com Comercial e Prato Feito
+              </span>
+              <span className="mt-1 block text-xs text-smoke">
+                Marque para cadastrar dois valores e deixar o cliente escolher.
+              </span>
+            </span>
+          </label>
+
+          {form.hasPriceVariants && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs uppercase tracking-widest text-smoke">
+                  Preco comercial *
+                </label>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-smoke">R$</span>
+                  <input
+                    type="number"
+                    required={form.hasPriceVariants}
+                    step="0.01"
+                    min="0"
+                    value={form.commercialPrice}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        commercialPrice: e.target.value,
+                        singlePrice: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gold/50"
+                    placeholder="0,00"
+                  />
+                </div>
+                {errors.commercialPrice && (
+                  <p className="mt-0.5 text-xs text-red-400">
+                    {errors.commercialPrice}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="mb-1 block text-xs uppercase tracking-widest text-smoke">
+                  Preco prato feito *
+                </label>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-smoke">R$</span>
+                  <input
+                    type="number"
+                    required={form.hasPriceVariants}
+                    step="0.01"
+                    min="0"
+                    value={form.pratoFeitoPrice}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        pratoFeitoPrice: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gold/50"
+                    placeholder="0,00"
+                  />
+                </div>
+                {errors.pratoFeitoPrice && (
+                  <p className="mt-0.5 text-xs text-red-400">
+                    {errors.pratoFeitoPrice}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!form.hasPriceVariants && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               <label className="mb-1 block text-xs uppercase tracking-widest text-smoke">
                 {t("ADMIN_PRODUCTS_SALE_PRICE", "Preço de venda *")}
@@ -389,7 +497,8 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
                 </p>
               )}
             </div>
-          </div>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button
@@ -644,11 +753,20 @@ function ProductCard({ product, onEdit }) {
       </div>
 
       <div className="mt-2 flex flex-wrap gap-1">
-        {primarySize?.price != null && (
+        {product.hasPriceVariants ? (
+          <>
+            <span className="rounded-xl bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+              Comercial R$ {Number(product.commercialPrice ?? 0).toFixed(2)}
+            </span>
+            <span className="rounded-xl bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+              Prato feito R$ {Number(product.pratoFeitoPrice ?? 0).toFixed(2)}
+            </span>
+          </>
+        ) : primarySize?.price != null ? (
           <span className="rounded-xl bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
             R$ {Number(primarySize.price).toFixed(2)}
           </span>
-        )}
+        ) : null}
         {primarySize?.costPrice != null && (
           <span className="rounded-xl bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
             Custo R$ {Number(primarySize.costPrice).toFixed(2)}

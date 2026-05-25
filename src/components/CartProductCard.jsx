@@ -21,6 +21,12 @@ function CartProductCard({
     <article className="rounded-2xl border border-[#2a313d] bg-[#161c25] p-3 text-[#e8ebf2] transition-all hover:border-amber-400/40">
       <h4 className="font-semibold text-[#f2f4f8]">{nome}</h4>
 
+      {item.priceVariantLabel ? (
+        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
+          {item.priceVariantLabel}
+        </p>
+      ) : null}
+
       {item.addons?.length ? (
         <div className="mt-1.5 space-y-1">
           {item.addons.map((addon) => (

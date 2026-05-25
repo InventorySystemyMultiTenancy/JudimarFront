@@ -55,6 +55,7 @@ const buildOrderItemsMessage = (items) =>
       );
       const itemTotal = (unitPrice + addonsTotal) * item.quantity;
       const details = [
+        item.priceVariantLabel ? `Tipo: ${item.priceVariantLabel}` : "",
         item.description,
         item.addons?.length
           ? `Adicionais: ${item.addons
@@ -152,6 +153,7 @@ const mapItemToApi = (item) => {
         payload.removedIngredients ||
         (item.removals || []).join(", ") ||
         undefined,
+      priceVariant: payload.priceVariant || item.priceVariant || undefined,
       quantity: item.quantity,
       notes: item.observation || item.notes || undefined,
     };

@@ -9,7 +9,16 @@ const currency = (value) =>
   Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const getProductPrice = (product) =>
-  Number(product?.price ?? product?.basePrice ?? product?.sizes?.[0]?.price ?? 0);
+  Number(
+    product?.hasPriceVariants
+      ? product?.commercialPrice
+      : (product?.price ?? product?.basePrice ?? product?.sizes?.[0]?.price ?? 0),
+  );
+
+const PRICE_VARIANTS = [
+  { id: "COMERCIAL", label: "Comercial", field: "commercialPrice" },
+  { id: "PRATO_FEITO", label: "Prato feito", field: "pratoFeitoPrice" },
+];
 
 function ProductCustomizer({ product, addonsOptions = DEFAULT_ADDONS, removalOptions = DEFAULT_REMOVALS, onClose }) {
   const { addItem, openCart } = useCart();
@@ -17,8 +26,20 @@ function ProductCustomizer({ product, addonsOptions = DEFAULT_ADDONS, removalOpt
   const [selectedRemovals, setSelectedRemovals] = useState([]);
   const [observation, setObservation] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const [priceVariant, setPriceVariant] = useState("COMERCIAL");
 
-  const basePrice = getProductPrice(product);
+  const hasPriceVariants = Boolean(product?.hasPriceVariants);
+  const selectedPriceVariant = hasPriceVariants ? priceVariant : null;
+  const selectedPriceVariantLabel =
+    PRICE_VARIANTS.find((variant) => variant.id === selectedPriceVariant)?.label ??
+    "";
+  const basePrice = hasPriceVariants
+    ? Number(
+        priceVariant === "PRATO_FEITO"
+          ? product?.pratoFeitoPrice
+          : product?.commercialPrice,
+      )
+    : getProductPrice(product);
 
   const addonsTotal = useMemo(
     () => selectedAddons.reduce((sum, addon) => sum + Number(addon.price || 0), 0),
@@ -45,6 +66,7 @@ function ProductCustomizer({ product, addonsOptions = DEFAULT_ADDONS, removalOpt
 
     const keyParts = [
       productId,
+      selectedPriceVariant,
       selectedAddons.map((a) => a.id).sort().join("."),
       selectedRemovals.slice().sort().join("."),
       observation.trim(),
@@ -55,12 +77,15 @@ function ProductCustomizer({ product, addonsOptions = DEFAULT_ADDONS, removalOpt
       id: productId,
       nome: product?.nome || product?.name,
       price: basePrice,
+      priceVariant: selectedPriceVariant,
+      priceVariantLabel: selectedPriceVariantLabel,
       addons: selectedAddons,
       removals: selectedRemovals,
       observation: observation.trim(),
       quantity,
       payload: {
         productId,
+        priceVariant: selectedPriceVariant,
         addonIds: selectedAddons.map((a) => a.id),
         removedIngredients: selectedRemovals.join(", "),
       },
@@ -83,6 +108,37 @@ function ProductCustomizer({ product, addonsOptions = DEFAULT_ADDONS, removalOpt
       </header>
 
       <div className="space-y-5">
+        {hasPriceVariants && (
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-secondary">
+              Tipo do prato
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {PRICE_VARIANTS.map((variant) => {
+                const selected = priceVariant === variant.id;
+                const price = Number(product?.[variant.field] ?? 0);
+                return (
+                  <button
+                    key={variant.id}
+                    type="button"
+                    onClick={() => setPriceVariant(variant.id)}
+                    className={`rounded-lg border px-3 py-2.5 text-left transition-all ${
+                      selected
+                        ? "border-secondary/60 bg-secondary/5 text-primary"
+                        : "border-border-soft bg-accent/40 text-text-muted hover:border-secondary/30"
+                    }`}
+                  >
+                    <span className="block text-sm font-bold">{variant.label}</span>
+                    <span className="text-sm font-semibold text-secondary">
+                      {currency(price)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Extras / Adicionais */}
         {addonsOptions.length > 0 && (
           <div>

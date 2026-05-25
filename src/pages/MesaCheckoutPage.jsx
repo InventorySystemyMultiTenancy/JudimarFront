@@ -27,6 +27,7 @@ const mapItemToApi = (item) => {
         payload.removedIngredients ||
         (item.removals || []).join(", ") ||
         undefined,
+      priceVariant: payload.priceVariant || item.priceVariant || undefined,
       quantity: item.quantity,
       notes: item.observation || item.notes || undefined,
     };
