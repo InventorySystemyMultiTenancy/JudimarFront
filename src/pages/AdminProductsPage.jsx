@@ -16,12 +16,38 @@ const emptyForm = () => ({
   hasPriceVariants: false,
   commercialPrice: "",
   pratoFeitoPrice: "",
+  commercialCostPrice: "",
+  pratoFeitoCostPrice: "",
   singlePrice: "",
   singleCostPrice: "",
 });
 
 function getPrimarySize(product) {
   return product?.sizes?.[0] ?? null;
+}
+
+function MoneyField({ label, value, onChange, error, required = false }) {
+  return (
+    <div>
+      <label className="mb-1 block text-xs uppercase tracking-widest text-smoke">
+        {label}
+      </label>
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-smoke">R$</span>
+        <input
+          type="number"
+          required={required}
+          step="0.01"
+          min="0"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gold/50"
+          placeholder="0,00"
+        />
+      </div>
+      {error && <p className="mt-0.5 text-xs text-red-400">{error}</p>}
+    </div>
+  );
 }
 
 // ── Tradução automática de produtos ──────────────────────────────────────────
@@ -104,6 +130,14 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
         product.commercialPrice != null ? String(product.commercialPrice) : "",
       pratoFeitoPrice:
         product.pratoFeitoPrice != null ? String(product.pratoFeitoPrice) : "",
+      commercialCostPrice:
+        product.commercialCostPrice != null
+          ? String(product.commercialCostPrice)
+          : "",
+      pratoFeitoCostPrice:
+        product.pratoFeitoCostPrice != null
+          ? String(product.pratoFeitoCostPrice)
+          : "",
       singlePrice: firstSize?.price != null ? String(firstSize.price) : "",
       singleCostPrice:
         firstSize?.costPrice != null ? String(firstSize.costPrice) : "",
@@ -143,9 +177,10 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
     const errs = {};
     if (!form.name.trim()) errs.name = "Nome obrigatório";
     if (
-      form.singlePrice === "" ||
-      isNaN(Number(form.singlePrice)) ||
-      Number(form.singlePrice) <= 0
+      !form.hasPriceVariants &&
+      (form.singlePrice === "" ||
+        isNaN(Number(form.singlePrice)) ||
+        Number(form.singlePrice) <= 0)
     ) {
       errs.singlePrice = "Preço inválido";
     }
@@ -154,6 +189,36 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
       (isNaN(Number(form.singleCostPrice)) || Number(form.singleCostPrice) < 0)
     ) {
       errs.singleCostPrice = "Custo inválido";
+    }
+    if (form.hasPriceVariants) {
+      if (
+        form.commercialPrice === "" ||
+        isNaN(Number(form.commercialPrice)) ||
+        Number(form.commercialPrice) <= 0
+      ) {
+        errs.commercialPrice = "Preco comercial invalido";
+      }
+      if (
+        form.pratoFeitoPrice === "" ||
+        isNaN(Number(form.pratoFeitoPrice)) ||
+        Number(form.pratoFeitoPrice) <= 0
+      ) {
+        errs.pratoFeitoPrice = "Preco prato feito invalido";
+      }
+      if (
+        form.commercialCostPrice !== "" &&
+        (isNaN(Number(form.commercialCostPrice)) ||
+          Number(form.commercialCostPrice) < 0)
+      ) {
+        errs.commercialCostPrice = "Custo comercial invalido";
+      }
+      if (
+        form.pratoFeitoCostPrice !== "" &&
+        (isNaN(Number(form.pratoFeitoCostPrice)) ||
+          Number(form.pratoFeitoCostPrice) < 0)
+      ) {
+        errs.pratoFeitoCostPrice = "Custo prato feito invalido";
+      }
     }
     if (form.imageUrl && !/^https?:\/\/.+/.test(form.imageUrl))
       errs.imageUrl = "URL inválida (deve começar com http)";
@@ -185,6 +250,14 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
         ? {
             commercialPrice: Number(form.commercialPrice),
             pratoFeitoPrice: Number(form.pratoFeitoPrice),
+            commercialCostPrice:
+              form.commercialCostPrice !== ""
+                ? Number(form.commercialCostPrice)
+                : null,
+            pratoFeitoCostPrice:
+              form.pratoFeitoCostPrice !== ""
+                ? Number(form.pratoFeitoCostPrice)
+                : null,
           }
         : {}),
       sizes: [
@@ -195,6 +268,8 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
           ),
           ...(form.singleCostPrice !== ""
             ? { costPrice: Number(form.singleCostPrice) }
+            : form.hasPriceVariants && form.commercialCostPrice !== ""
+              ? { costPrice: Number(form.commercialCostPrice) }
             : {}),
         },
       ],
@@ -386,63 +461,57 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
           </label>
 
           {form.hasPriceVariants && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs uppercase tracking-widest text-smoke">
-                  Preco comercial *
-                </label>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-smoke">R$</span>
-                  <input
-                    type="number"
-                    required={form.hasPriceVariants}
-                    step="0.01"
-                    min="0"
-                    value={form.commercialPrice}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        commercialPrice: e.target.value,
-                        singlePrice: e.target.value,
-                      }))
-                    }
-                    className="w-full rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gold/50"
-                    placeholder="0,00"
-                  />
-                </div>
-                {errors.commercialPrice && (
-                  <p className="mt-0.5 text-xs text-red-400">
-                    {errors.commercialPrice}
-                  </p>
-                )}
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <MoneyField
+                  label="Preco comercial *"
+                  value={form.commercialPrice}
+                  required={form.hasPriceVariants}
+                  error={errors.commercialPrice}
+                  onChange={(value) =>
+                    setForm((p) => ({
+                      ...p,
+                      commercialPrice: value,
+                      singlePrice: value,
+                    }))
+                  }
+                />
+                <MoneyField
+                  label="Preco prato feito *"
+                  value={form.pratoFeitoPrice}
+                  required={form.hasPriceVariants}
+                  error={errors.pratoFeitoPrice}
+                  onChange={(value) =>
+                    setForm((p) => ({
+                      ...p,
+                      pratoFeitoPrice: value,
+                    }))
+                  }
+                />
               </div>
-              <div>
-                <label className="mb-1 block text-xs uppercase tracking-widest text-smoke">
-                  Preco prato feito *
-                </label>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-smoke">R$</span>
-                  <input
-                    type="number"
-                    required={form.hasPriceVariants}
-                    step="0.01"
-                    min="0"
-                    value={form.pratoFeitoPrice}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        pratoFeitoPrice: e.target.value,
-                      }))
-                    }
-                    className="w-full rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gold/50"
-                    placeholder="0,00"
-                  />
-                </div>
-                {errors.pratoFeitoPrice && (
-                  <p className="mt-0.5 text-xs text-red-400">
-                    {errors.pratoFeitoPrice}
-                  </p>
-                )}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <MoneyField
+                  label="Custo comercial"
+                  value={form.commercialCostPrice}
+                  error={errors.commercialCostPrice}
+                  onChange={(value) =>
+                    setForm((p) => ({
+                      ...p,
+                      commercialCostPrice: value,
+                    }))
+                  }
+                />
+                <MoneyField
+                  label="Custo prato feito"
+                  value={form.pratoFeitoCostPrice}
+                  error={errors.pratoFeitoCostPrice}
+                  onChange={(value) =>
+                    setForm((p) => ({
+                      ...p,
+                      pratoFeitoCostPrice: value,
+                    }))
+                  }
+                />
               </div>
             </div>
           )}
@@ -761,6 +830,18 @@ function ProductCard({ product, onEdit }) {
             <span className="rounded-xl bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
               Prato feito R$ {Number(product.pratoFeitoPrice ?? 0).toFixed(2)}
             </span>
+            {product.commercialCostPrice != null && (
+              <span className="rounded-xl bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                Custo comercial R${" "}
+                {Number(product.commercialCostPrice).toFixed(2)}
+              </span>
+            )}
+            {product.pratoFeitoCostPrice != null && (
+              <span className="rounded-xl bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700">
+                Custo prato feito R${" "}
+                {Number(product.pratoFeitoCostPrice).toFixed(2)}
+              </span>
+            )}
           </>
         ) : primarySize?.price != null ? (
           <span className="rounded-xl bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
