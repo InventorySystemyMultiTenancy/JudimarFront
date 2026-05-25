@@ -912,6 +912,7 @@ function ProductCard({ product, onEdit }) {
 function AdminProductsPage() {
   const { t } = useTranslation();
   const [modal, setModal] = useState(null); // null | "new" | product object
+  const [selectedCategory, setSelectedCategory] = useState("ALL");
 
   const {
     data: products = [],
@@ -930,6 +931,15 @@ function AdminProductsPage() {
       products.map((p) => p.category).filter((c) => c && c !== "Geral"),
     ),
   ];
+  const categoryOptions = [
+    ...new Set(
+      products.map((p) => p.category || "Geral").filter(Boolean),
+    ),
+  ].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const filteredProducts =
+    selectedCategory === "ALL"
+      ? products
+      : products.filter((product) => (product.category || "Geral") === selectedCategory);
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-6 text-gray-900 sm:px-6">
@@ -986,8 +996,25 @@ function AdminProductsPage() {
               String(products.filter((p) => !p.isActive).length),
             )}
           </p>
+          <div className="mt-4 flex flex-col gap-2 sm:max-w-xs">
+            <label className="text-xs uppercase tracking-widest text-smoke">
+              Filtrar por categoria
+            </label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gold/50"
+            >
+              <option value="ALL">Todas as categorias</option>
+              {categoryOptions.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((product) => (
+            {filteredProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -997,6 +1024,11 @@ function AdminProductsPage() {
             {products.length === 0 && (
               <div className="col-span-full rounded-2xl border border-dashed border-white/15 p-10 text-center text-sm text-smoke">
                 {t("ADMIN_PRODUCTS_EMPTY", "Nenhum produto cadastrado ainda.")}
+              </div>
+            )}
+            {products.length > 0 && filteredProducts.length === 0 && (
+              <div className="col-span-full rounded-2xl border border-dashed border-gray-200 bg-white/70 p-10 text-center text-sm text-smoke">
+                Nenhum produto nessa categoria.
               </div>
             )}
           </div>
