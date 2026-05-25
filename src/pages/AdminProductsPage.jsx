@@ -913,6 +913,7 @@ function AdminProductsPage() {
   const { t } = useTranslation();
   const [modal, setModal] = useState(null); // null | "new" | product object
   const [selectedCategory, setSelectedCategory] = useState("ALL");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const {
     data: products = [],
@@ -939,7 +940,19 @@ function AdminProductsPage() {
   const filteredProducts =
     selectedCategory === "ALL"
       ? products
-      : products.filter((product) => (product.category || "Geral") === selectedCategory);
+      : products.filter(
+          (product) => (product.category || "Geral") === selectedCategory,
+        );
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const visibleProducts = normalizedSearch
+    ? filteredProducts.filter((product) =>
+        [product.name, product.description, product.category]
+          .filter(Boolean)
+          .some((value) =>
+            String(value).toLowerCase().includes(normalizedSearch),
+          ),
+      )
+    : filteredProducts;
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-6 text-gray-900 sm:px-6">
@@ -996,25 +1009,39 @@ function AdminProductsPage() {
               String(products.filter((p) => !p.isActive).length),
             )}
           </p>
-          <div className="mt-4 flex flex-col gap-2 sm:max-w-xs">
-            <label className="text-xs uppercase tracking-widest text-smoke">
-              Filtrar por categoria
-            </label>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gold/50"
-            >
-              <option value="ALL">Todas as categorias</option>
-              {categoryOptions.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
+          <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(220px,280px)]">
+            <div className="flex flex-col gap-2">
+              <label className="text-xs uppercase tracking-widest text-smoke">
+                Buscar produto
+              </label>
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gold/50"
+                placeholder="Nome, descricao ou categoria"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs uppercase tracking-widest text-smoke">
+                Filtrar por categoria
+              </label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gold/50"
+              >
+                <option value="ALL">Todas as categorias</option>
+                {categoryOptions.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredProducts.map((product) => (
+            {visibleProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -1026,9 +1053,9 @@ function AdminProductsPage() {
                 {t("ADMIN_PRODUCTS_EMPTY", "Nenhum produto cadastrado ainda.")}
               </div>
             )}
-            {products.length > 0 && filteredProducts.length === 0 && (
+            {products.length > 0 && visibleProducts.length === 0 && (
               <div className="col-span-full rounded-2xl border border-dashed border-gray-200 bg-white/70 p-10 text-center text-sm text-smoke">
-                Nenhum produto nessa categoria.
+                Nenhum produto encontrado.
               </div>
             )}
           </div>
