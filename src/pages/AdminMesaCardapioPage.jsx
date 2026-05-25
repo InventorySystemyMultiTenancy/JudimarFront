@@ -1,11 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
+import { useState } from "react";
+import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { useTranslation } from "../context/I18nContext.jsx";
 
 function AdminMesaCardapioPage() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({ name: "", number: "" });
 
   const {
     data: mesas = [],
@@ -18,6 +22,43 @@ function AdminMesaCardapioPage() {
       return res.data?.data ?? [];
     },
   });
+
+  const createMesaMutation = useMutation({
+    mutationFn: async (payload) => {
+      const res = await api.post("/mesas", payload);
+      return res.data?.data;
+    },
+    onSuccess: () => {
+      setForm({ name: "", number: "" });
+      queryClient.invalidateQueries({ queryKey: ["admin-mesas"] });
+      toast.success("Mesa cadastrada.");
+    },
+    onError: (err) => {
+      toast.error(
+        err?.response?.data?.error?.message || "Nao foi possivel cadastrar a mesa.",
+      );
+    },
+  });
+
+  const handleCreateMesa = (event) => {
+    event.preventDefault();
+    const number = Number(form.number);
+
+    if (!form.name.trim()) {
+      toast.error("Informe o nome da mesa.");
+      return;
+    }
+
+    if (!Number.isInteger(number) || number < 1) {
+      toast.error("Informe um numero de mesa valido.");
+      return;
+    }
+
+    createMesaMutation.mutate({
+      name: form.name.trim(),
+      number,
+    });
+  };
 
   const handlePrint = (mesaId) => {
     const container = document.getElementById(`qr-print-${mesaId}`);
@@ -73,6 +114,50 @@ function AdminMesaCardapioPage() {
           </p>
         </div>
       </div>
+
+      <form
+        onSubmit={handleCreateMesa}
+        className="mb-5 grid gap-3 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:grid-cols-[1fr_160px_180px]"
+      >
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-gray-600">
+            Nome da mesa *
+          </label>
+          <input
+            type="text"
+            maxLength={100}
+            value={form.name}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, name: event.target.value }))
+            }
+            placeholder="Ex: Mesa 4"
+            className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-gold/60"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-gray-600">
+            Numero *
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={999}
+            value={form.number}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, number: event.target.value }))
+            }
+            placeholder="Ex: 4"
+            className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-gold/60"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={createMesaMutation.isPending}
+          className="self-end rounded-2xl bg-rosso px-4 py-3 text-sm font-bold text-white transition hover:bg-ember disabled:opacity-50"
+        >
+          {createMesaMutation.isPending ? "Cadastrando..." : "+ Cadastrar mesa"}
+        </button>
+      </form>
 
       <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-6 rounded-3xl border border-dashed border-gray-200 bg-slate-50 p-4 text-sm text-slate-700">

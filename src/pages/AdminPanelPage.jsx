@@ -317,26 +317,6 @@ function AdminPanelPage() {
         </Link>
 
         <Link
-          to="/admin/mesas"
-          className="group flex items-start gap-4 rounded-2xl border border-gold/20 bg-lacquer/70 p-5 transition hover:border-gold/50 hover:shadow-md"
-        >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-2xl">
-            🪑
-          </span>
-          <div>
-            <h2 className="font-semibold text-gray-900 group-hover:text-gold">
-              {t("ADMIN_PANEL_CARD_TABLES_TITLE_JUDIMAR", "Mesas")}
-            </h2>
-            <p className="mt-0.5 text-xs text-smoke">
-              {t(
-                "ADMIN_PANEL_CARD_TABLES_DESC_JUDIMAR",
-                "Cadastrar mesas, maquininhas e gerar QR codes",
-              )}
-            </p>
-          </div>
-        </Link>
-
-        <Link
           to="/comandas"
           className="group flex items-start gap-4 rounded-2xl border border-gold/20 bg-lacquer/70 p-5 transition hover:border-gold/50 hover:shadow-md"
         >

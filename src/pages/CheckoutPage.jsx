@@ -1,16 +1,42 @@
 import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext.jsx";
 import { useAuth } from "../hooks/useAuth.js";
 import { api } from "../lib/api.js";
 import { useTranslation } from "../context/I18nContext.jsx";
 
-const POLL_INTERVAL_MS = 4000;
+const FREE_DELIVERY_RADIUS_KM = 5;
+const PIZZARIA_WHATSAPP =
+  import.meta.env.VITE_PIZZARIA_WHATSAPP || "5511971174080";
 
 const currency = (v) =>
   Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const toNumber = (value) => {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    return Number(value.replace(",", "."));
+  }
+  return Number.NaN;
+};
+
+const applyFreeDeliveryRadius = (freightData) => {
+  if (!freightData) return freightData;
+
+  const distanceKm = toNumber(freightData.distanciaKm);
+  if (!Number.isFinite(distanceKm) || distanceKm > FREE_DELIVERY_RADIUS_KM) {
+    return freightData;
+  }
+
+  return {
+    ...freightData,
+    valorFreteNumerico: 0,
+    valorFrete: currency(0),
+    freteGratisPorDistancia: true,
+  };
+};
 
 const formatCep = (v) => {
   const d = v.replace(/\D/g, "").slice(0, 8);
@@ -18,6 +44,99 @@ const formatCep = (v) => {
 };
 
 const isValidEntityId = (value) => String(value || "").trim().length > 0;
+
+const buildOrderItemsMessage = (items) =>
+  items
+    .map((item) => {
+      const unitPrice = Number(item.price || item.basePrice || 0);
+      const addonsTotal = (item.addons || []).reduce(
+        (sum, addon) => sum + Number(addon?.price || 0),
+        0,
+      );
+      const itemTotal = (unitPrice + addonsTotal) * item.quantity;
+      const details = [
+        item.description,
+        item.addons?.length
+          ? `Adicionais: ${item.addons
+              .map((addon) => addon?.nome || addon?.name || addon?.label)
+              .filter(Boolean)
+              .join(", ")}`
+          : "",
+        item.removals?.length ? `Sem: ${item.removals.join(", ")}` : "",
+        item.observation ? `Obs: ${item.observation}` : "",
+      ].filter(Boolean);
+
+      return [
+        `- ${item.quantity}x ${item.title || item.nome || item.name || "Item"} (${currency(itemTotal)})`,
+        ...details.map((detail) => `  ${detail}`),
+      ].join("\n");
+    })
+    .join("\n");
+
+const buildWhatsAppUrl = ({
+  order,
+  user,
+  items,
+  deliveryType,
+  paymentMode,
+  fullAddress,
+  referencia,
+  notes,
+  subtotal,
+  freight,
+  total,
+}) => {
+  const shortOrderId = order?.id
+    ? `#${String(order.id).slice(-6).toUpperCase()}`
+    : "novo pedido";
+  const phone = PIZZARIA_WHATSAPP.replace(/\D/g, "");
+  const customerLines = [
+    `Nome: ${user?.name || "Nao informado"}`,
+    user?.phone ? `Telefone: ${user.phone}` : "",
+    user?.email ? `Email: ${user.email}` : "",
+    user?.cpf ? `CPF: ${user.cpf}` : "",
+    user?.address ? `Endereco cadastrado: ${user.address}` : "",
+  ].filter(Boolean);
+  const deliveryLines =
+    deliveryType === "retirada"
+      ? ["Tipo: Retirada no local"]
+      : [
+          "Tipo: Entrega",
+          `Endereco: ${fullAddress || "Nao informado"}`,
+          referencia ? `Referencia: ${referencia}` : "",
+          freight?.distanciaKm ? `Distancia: ${freight.distanciaKm} km` : "",
+        ].filter(Boolean);
+  const paymentLabel =
+    paymentMode === "online"
+      ? "Pagar pelo WhatsApp"
+      : "Pagar na entrega/retirada";
+
+  const message = [
+    `Ola! Pedido ${shortOrderId} realizado pelo site.`,
+    "",
+    "DADOS DO CLIENTE",
+    ...customerLines,
+    "",
+    "ENTREGA",
+    ...deliveryLines,
+    "",
+    "ITENS",
+    buildOrderItemsMessage(items),
+    "",
+    "VALORES",
+    `Subtotal: ${currency(subtotal)}`,
+    `Frete: ${currency(freight?.valorFreteNumerico || 0)}`,
+    `Total: ${currency(total)}`,
+    "",
+    "PAGAMENTO",
+    paymentLabel,
+    notes ? `Observacoes do pedido: ${notes}` : "",
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
+
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+};
 
 const mapItemToApi = (item) => {
   const payload = item.payload || {};
@@ -45,8 +164,6 @@ function CheckoutPage() {
   const { t } = useTranslation();
   const { items, subtotal, clearCart } = useCart();
   const [paymentMode, setPaymentMode] = useState("online");
-  const [waitingOrderId, setWaitingOrderId] = useState(null);
-  const pollRef = useRef(null);
 
   // Address
   const [cep, setCep] = useState("");
@@ -62,36 +179,7 @@ function CheckoutPage() {
   const [freight, setFreight] = useState(null);
   const [freightLoading, setFreightLoading] = useState(false);
   const [freightError, setFreightError] = useState("");
-  const [pollStatus, setPollStatus] = useState("PENDENTE");
   const [deliveryType, setDeliveryType] = useState("entrega"); // "entrega" | "retirada"
-
-  // Payment polling
-  useEffect(() => {
-    if (!waitingOrderId) return;
-    const poll = async () => {
-      try {
-        const res = await api.get(`/orders/${waitingOrderId}`);
-        const order = res.data?.data || res.data;
-        const status = order?.paymentStatus;
-        setPollStatus(status);
-        if (status === "APROVADO") {
-          clearInterval(pollRef.current);
-          clearCart();
-          toast.success("Pagamento confirmado! Preparando seu pedido 🍕");
-          navigate("/dashboard");
-        } else if (status === "RECUSADO") {
-          clearInterval(pollRef.current);
-          toast.error("Pagamento recusado. Tente novamente.");
-          setWaitingOrderId(null);
-        }
-      } catch {
-        // ignore transient errors
-      }
-    };
-    pollRef.current = setInterval(poll, POLL_INTERVAL_MS);
-    poll();
-    return () => clearInterval(pollRef.current);
-  }, [waitingOrderId, clearCart, navigate]);
 
   // ViaCEP auto-fill
   const fetchViaCep = useCallback(async (rawCep) => {
@@ -143,7 +231,7 @@ function CheckoutPage() {
         rua: rua.trim() || undefined,
         complemento: complemento.trim() || undefined,
       });
-      setFreight(res.data?.data);
+      setFreight(applyFreeDeliveryRadius(res.data?.data));
     } catch (err) {
       const msg =
         err?.response?.data?.error?.message ||
@@ -194,46 +282,47 @@ function CheckoutPage() {
     },
   });
 
-  const preferenceMutation = useMutation({
-    mutationFn: async (orderId) => {
-      const response = await api.post("/payments/preference", { orderId });
-      return response.data?.data;
-    },
-  });
-
-  const handleOnlineCheckout = async () => {
+  const handleConfirmOrder = async () => {
+    const whatsappTab = window.open("about:blank", "_blank");
     try {
-      const order = await createOrderMutation.mutateAsync("PIX");
-      const pref = await preferenceMutation.mutateAsync(order.id);
-      window.open(pref.initPoint, "_blank", "noopener,noreferrer");
-      setWaitingOrderId(order.id);
+      const order = await createOrderMutation.mutateAsync(
+        paymentMode === "online" ? "PIX" : "PRESENCIAL",
+      );
+      const whatsappUrl = buildWhatsAppUrl({
+        order,
+        user,
+        items,
+        deliveryType,
+        paymentMode,
+        fullAddress,
+        referencia,
+        notes,
+        subtotal,
+        freight: effectiveFreight,
+        total: totalWithFreight,
+      });
+
+      if (whatsappTab) {
+        whatsappTab.opener = null;
+        whatsappTab.location.href = whatsappUrl;
+      } else {
+        toast.success("Pedido confirmado! Abrindo WhatsApp.");
+        clearCart();
+        window.location.href = whatsappUrl;
+        return;
+      }
+
+      toast.success("Pedido confirmado! Abrindo WhatsApp.");
+      clearCart();
+      navigate("/dashboard");
     } catch (err) {
+      if (whatsappTab) {
+        whatsappTab.close();
+      }
       const data = err?.response?.data;
       const details = data?.error?.details?.fieldErrors;
       const detailText = details ? JSON.stringify(details) : null;
       console.error("[CheckoutPage] create order failed", {
-        status: err?.response?.status,
-        data,
-      });
-      toast.error(
-        data?.error?.message
-          ? `${data.error.message}${detailText ? `: ${detailText}` : ""}`
-          : "Erro ao gerar pagamento. Tente novamente.",
-      );
-    }
-  };
-
-  const handlePresencialCheckout = async () => {
-    try {
-      await createOrderMutation.mutateAsync("PRESENCIAL");
-      toast.success("Pedido confirmado! Aguarde a cobrança presencial.");
-      clearCart();
-      navigate("/dashboard");
-    } catch (err) {
-      const data = err?.response?.data;
-      const details = data?.error?.details?.fieldErrors;
-      const detailText = details ? JSON.stringify(details) : null;
-      console.error("[CheckoutPage] presencial order failed", {
         status: err?.response?.status,
         data,
       });
@@ -245,8 +334,7 @@ function CheckoutPage() {
     }
   };
 
-  const isLoading =
-    createOrderMutation.isPending || preferenceMutation.isPending;
+  const isLoading = createOrderMutation.isPending;
 
   const canConfirm =
     isAuthenticated &&
@@ -254,56 +342,6 @@ function CheckoutPage() {
     subtotal > 0 &&
     !isLoading &&
     (deliveryType === "retirada" || freight !== null);
-
-  // Waiting for payment screen
-  if (waitingOrderId) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-ink px-4 text-gray-900">
-        <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-xl">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gold/10">
-            <svg
-              className="h-8 w-8 animate-spin text-gold"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v8H4z"
-              />
-            </svg>
-          </div>
-          <h1 className="mt-5 font-display text-2xl text-gold">
-            {t("CHECKOUT_WAITING_TITLE", "Aguardando pagamento")}
-          </h1>
-          <p className="mt-2 text-sm text-smoke">
-            {t(
-              "CHECKOUT_WAITING_DESC",
-              "A página do Mercado Pago foi aberta em outra aba. Conclua o pagamento por lá e aguarde a confirmação aqui.",
-            )}
-          </p>
-          <p className="mt-4 rounded-xl bg-gray-50 px-4 py-2 font-mono text-xs text-smoke">
-            Pedido: #{waitingOrderId.slice(-8).toUpperCase()}
-          </p>
-          <p className="mt-3 text-xs text-smoke">
-            {t(
-              "CHECKOUT_WAITING_UPDATE",
-              "Esta página atualiza automaticamente a cada poucos segundos.",
-            )}
-          </p>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-4xl px-4 py-6 text-gray-900 sm:px-6">
@@ -498,6 +536,9 @@ function CheckoutPage() {
                     <div className="mt-3 rounded-2xl border border-green-200 bg-green-50 px-4 py-3">
                       <p className="text-sm font-bold text-green-800">
                         Frete: {freight.valorFrete}
+                        {freight.freteGratisPorDistancia
+                          ? " (gratis ate 5 km)"
+                          : ""}
                       </p>
                       <p className="mt-0.5 text-xs text-green-700">
                         Distância: {freight.distanciaKm} km · Tempo estimado: ~
@@ -576,7 +617,7 @@ function CheckoutPage() {
                       : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
-                  💳 Pagar Online
+                  💳 Pagar pelo WhatsApp
                 </button>
                 <button
                   type="button"
@@ -593,14 +634,12 @@ function CheckoutPage() {
 
               {paymentMode === "online" ? (
                 <div className="mt-3 rounded-2xl border border-gold/20 bg-gray-50 p-4">
-                  <img
-                    src="https://http2.mlstatic.com/frontend-assets/mp-web-navigation/ui-navigation/6.6.71/mercadopago/logo__large@2x.png"
-                    alt="Mercado Pago"
-                    className="h-5 w-auto"
-                  />
+                  <p className="text-sm font-bold text-gray-900">
+                    Confirmacao pelo WhatsApp
+                  </p>
                   <ul className="mt-3 space-y-1 text-xs text-smoke">
-                    <li>✅ Pix, crédito, débito aceitos</li>
-                    <li>✅ Preparo inicia automaticamente após confirmação</li>
+                    <li>✅ Pedido enviado com todos os dados para a equipe</li>
+                    <li>✅ Combine Pix, cartao ou confirmacao pelo WhatsApp</li>
                   </ul>
                 </div>
               ) : (
@@ -619,18 +658,14 @@ function CheckoutPage() {
             <button
               type="button"
               disabled={!canConfirm}
-              onClick={
-                paymentMode === "online"
-                  ? handleOnlineCheckout
-                  : handlePresencialCheckout
-              }
+              onClick={handleConfirmOrder}
               className="w-full rounded-2xl bg-rosso px-5 py-4 text-base font-bold text-white shadow-md transition hover:bg-ember disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading
                 ? "Processando..."
                 : paymentMode === "online"
-                  ? "Pagar com Mercado Pago →"
-                  : "Confirmar Pedido →"}
+                  ? "Confirmar e abrir WhatsApp →"
+                  : "Confirmar pedido no WhatsApp →"}
             </button>
           </section>
         </div>
