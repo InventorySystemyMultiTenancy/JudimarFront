@@ -1165,11 +1165,10 @@ export default function AtendentePanel() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="font-display text-xl text-primary">
-                    Histórico da {targetLabel}
+                    Pedidos da {targetLabel}
                   </h2>
                   <p className="mt-1 text-xs text-gray-500">
-                    Pedidos do dia da {targetLabel} selecionada, com status e baixa de
-                    pagamento.
+                    Pedidos do dia da {targetLabel} pendentes, ainda não entregues ou agu, pagamento
                   </p>
                 </div>
                 <div className="rounded-2xl bg-accent px-3 py-2 text-xs text-gray-600">
