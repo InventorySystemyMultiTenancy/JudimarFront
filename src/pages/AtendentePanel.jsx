@@ -393,15 +393,31 @@ export default function AtendentePanel() {
     [activeOrders],
   );
 
-  const readyTargetOrders = useMemo(
+  const readyOrders = useMemo(
     () =>
-      activeOrders.filter((order) =>
-        ["PRONTO", "SAIU_PARA_ENTREGA", "LEVAR_PARA_MESA"].includes(
-          order.status,
-        ),
-      ),
-    [activeOrders],
+      orders
+        .filter(
+          (order) =>
+            (order.mesaId || order.comandaId || order.mesa || order.comanda) &&
+            ["PRONTO", "SAIU_PARA_ENTREGA", "LEVAR_PARA_MESA"].includes(
+              order.status,
+            ),
+        )
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)),
+    [orders],
   );
+
+  const getOrderOriginLabel = useCallback((order) => {
+    if (order.mesa) {
+      return order.mesa.name ?? `Mesa ${order.mesa.number ?? ""}`.trim();
+    }
+    if (order.comanda) {
+      return `Comanda ${order.comanda.number ?? ""}`.trim();
+    }
+    if (order.orderType === "MESA" || order.mesaId) return "Mesa";
+    if (order.orderType === "COMANDA" || order.comandaId) return "Comanda";
+    return "Pedido";
+  }, []);
 
   const notes = mesaNotes[notesKey] ?? "";
 
@@ -948,21 +964,21 @@ export default function AtendentePanel() {
                     Pedidos prontos
                   </h2>
                   <p className="mt-1 text-xs text-gray-500">
-                    Pedidos liberados para levar ate a {targetLabel} selecionada.
+                    Todos os pedidos liberados para levar ate a mesa ou comanda.
                   </p>
                 </div>
                 <span className="rounded-2xl bg-green-100 px-3 py-2 text-xs font-semibold text-green-700">
-                  {readyTargetOrders.length} pronto(s)
+                  {readyOrders.length} pronto(s)
                 </span>
               </div>
 
-              {readyTargetOrders.length === 0 ? (
+              {readyOrders.length === 0 ? (
                 <div className="mt-4 rounded-2xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
-                  Nenhum pedido pronto para esta {targetLabel}.
+                  Nenhum pedido pronto no momento.
                 </div>
               ) : (
                 <div className="mt-4 space-y-3">
-                  {readyTargetOrders.map((order) => (
+                  {readyOrders.map((order) => (
                     <article
                       key={`ready-${order.id}`}
                       className="rounded-2xl border border-green-200 bg-green-50/40 p-4"
@@ -973,7 +989,7 @@ export default function AtendentePanel() {
                             Pedido #{order.id.slice(-6).toUpperCase()}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {selectedTargetName || targetLabel} •{" "}
+                            {getOrderOriginLabel(order)} •{" "}
                             {formatRelativeTime(order.createdAt)}
                           </p>
                         </div>
@@ -1015,7 +1031,7 @@ export default function AtendentePanel() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="font-display text-xl text-primary">
-                    ðŸ“œ HistÃ³rico da {targetLabel}
+                    Histórico da {targetLabel}
                   </h2>
                   <p className="mt-1 text-xs text-gray-500">
                     Pedidos do dia da {targetLabel} selecionada, com status e baixa de
