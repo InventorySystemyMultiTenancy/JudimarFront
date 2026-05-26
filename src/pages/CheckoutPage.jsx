@@ -9,7 +9,7 @@ import { useTranslation } from "../context/I18nContext.jsx";
 
 const FREE_DELIVERY_RADIUS_KM = 5;
 const PIZZARIA_WHATSAPP =
-  import.meta.env.VITE_PIZZARIA_WHATSAPP || "5511971174080";
+  import.meta.env.VITE_PIZZARIA_WHATSAPP || "5511989742846";
 
 const currency = (v) =>
   Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });

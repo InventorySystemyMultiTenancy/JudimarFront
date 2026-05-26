@@ -10,7 +10,8 @@ import { useAuth } from "../hooks/useAuth.js";
 import { api } from "../lib/api.js";
 import { useTranslation } from "../context/I18nContext.jsx";
 
-const PIZZARIA_WHATSAPP = import.meta.env.VITE_PIZZARIA_WHATSAPP ?? "";
+const PIZZARIA_WHATSAPP =
+  import.meta.env.VITE_PIZZARIA_WHATSAPP || "5511989742846";
 
 function buildWhatsAppUrl(order, userName, t) {
   const shortId = `#${order.id.slice(-6).toUpperCase()}`;
