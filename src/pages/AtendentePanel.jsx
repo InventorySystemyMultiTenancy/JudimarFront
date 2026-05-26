@@ -19,8 +19,8 @@ const ACTIVE_STATUSES = ["RECEBIDO", "PREPARANDO", "PRONTO", "LEVAR_PARA_MESA"];
 const STATUS_LABEL = {
   RECEBIDO: "Recebido",
   PREPARANDO: "Preparando",
-  PRONTO: "Pronto âœ“",
-  LEVAR_PARA_MESA: "Levar Ã  mesa",
+  PRONTO: "Pronto ✓",
+  LEVAR_PARA_MESA: "Levar à mesa",
   AGUARDANDO_PAGAMENTO: "Ag. pagamento",
 };
 
@@ -144,9 +144,9 @@ function AttendantProductCard({
 function formatRelativeTime(timestamp) {
   if (!timestamp) return "";
   const diff = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000);
-  if (diff < 60) return `${diff}s atrÃ¡s`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}min atrÃ¡s`;
-  return `${Math.floor(diff / 3600)}h atrÃ¡s`;
+  if (diff < 60) return `${diff}s atrás`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}min atrás`;
+  return `${Math.floor(diff / 3600)}h atrás`;
 }
 
 export default function AtendentePanel() {
@@ -421,7 +421,7 @@ export default function AtendentePanel() {
 
   const notes = mesaNotes[notesKey] ?? "";
 
-  // AvanÃ§ar status do pedido
+  // Avançar status do pedido
   const advanceMutation = useMutation({
     mutationFn: async ({ orderId, status }) => {
       const res = await api.patch(`/orders/${orderId}/status`, { status });
@@ -472,13 +472,13 @@ export default function AtendentePanel() {
       queryClient.invalidateQueries({
         queryKey: ["atendente-comanda-open-totals"],
       });
-      toast.success(`Pedido lanÃ§ado para a ${targetLabel}.`);
+      toast.success(`Pedido lançado para a ${targetLabel}.`);
     },
     onError: (error) => {
       const message =
         error?.response?.data?.error?.message ||
         error?.message ||
-        "Erro ao lanÃ§ar pedido.";
+        "Erro ao lançar pedido.";
       toast.error(message);
     },
   });
@@ -505,7 +505,7 @@ export default function AtendentePanel() {
     onError: (error) => {
       const message =
         error?.response?.data?.error?.message ||
-        "NÃ£o foi possÃ­vel baixar o pagamento.";
+        "Não foi possível baixar o pagamento.";
       toast.error(message);
     },
   });
@@ -601,12 +601,12 @@ export default function AtendentePanel() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-8">
-        {/* â”€â”€ Chamadas de mesa â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Chamadas de mesa */}
         <section>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-xl text-primary">
-                ðŸ›Ž Chamadas de Mesa
+                Chamadas de Mesa
               </h2>
               <p className="mt-1 text-xs text-gray-500">
                 Pedidos de atendimento enviados pelas mesas via QR code.
@@ -636,7 +636,7 @@ export default function AtendentePanel() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-display text-xl text-primary">
-                      Mesa {call?.mesaNumber ?? "â€”"}
+                      Mesa {call?.mesaNumber ?? "—"}
                     </p>
                     <span className="rounded-full bg-secondary/10 px-2 py-1 text-[11px] font-semibold text-secondary">
                       {formatRelativeTime(call?.timestamp)}
@@ -661,9 +661,9 @@ export default function AtendentePanel() {
         <section>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="font-display text-xl text-primary">ðŸª‘ Mesas</h2>
+              <h2 className="font-display text-xl text-primary">Mesas</h2>
               <p className="mt-1 text-xs text-gray-500">
-                Selecione a mesa para tirar o pedido e acompanhar o histÃ³rico do
+                Selecione a mesa para tirar o pedido e acompanhar o histórico do
                 dia.
               </p>
             </div>
@@ -735,14 +735,14 @@ export default function AtendentePanel() {
                 }}
                 className="rounded-2xl border border-secondary/40 bg-white px-4 py-3 text-sm font-bold text-secondary shadow-sm transition hover:bg-secondary/10"
               >
-                CardÃ¡pio
+                Cardápio
               </button>
               <button
                 type="button"
                 onClick={() => scrollToPanelSection("mesa-historico")}
                 className="rounded-2xl border border-primary/20 bg-white px-4 py-3 text-sm font-bold text-primary shadow-sm transition hover:bg-primary/5"
               >
-                HistÃ³rico da mesa
+                Histórico da mesa
               </button>
             </div>
           ) : null}
@@ -751,9 +751,9 @@ export default function AtendentePanel() {
         <section>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="font-display text-xl text-primary">ðŸŽ« Comandas</h2>
+              <h2 className="font-display text-xl text-primary">Comandas</h2>
               <p className="mt-1 text-xs text-gray-500">
-                Selecione a comanda para lanÃ§ar pedido e acompanhar o histÃ³rico
+                Selecione a comanda para lançar pedido e acompanhar o histórico
                 do dia.
               </p>
             </div>
@@ -826,14 +826,14 @@ export default function AtendentePanel() {
                 }}
                 className="rounded-2xl border border-secondary/40 bg-white px-4 py-3 text-sm font-bold text-secondary shadow-sm transition hover:bg-secondary/10"
               >
-                CardÃ¡pio
+                Cardápio
               </button>
               <button
                 type="button"
                 onClick={() => scrollToPanelSection("mesa-historico")}
                 className="rounded-2xl border border-primary/20 bg-white px-4 py-3 text-sm font-bold text-primary shadow-sm transition hover:bg-primary/5"
               >
-                HistÃ³rico da comanda
+                Histórico da comanda
               </button>
             </div>
           ) : null}
@@ -848,12 +848,12 @@ export default function AtendentePanel() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="font-display text-xl text-primary">
-                    ðŸ½ Novo pedido{" "}
-                    {selectedTargetName ? `â€¢ ${selectedTargetName}` : ""}
+                    Novo pedido{" "}
+                    {selectedTargetName ? `• ${selectedTargetName}` : ""}
                   </h2>
                   <p className="mt-1 text-xs text-gray-500">
-                    Monte o pedido, vincule Ã  {targetLabel} e o histÃ³rico fica salvo para
-                    cobranÃ§a depois.
+                    Monte o pedido, vincule à {targetLabel} e o histórico fica salvo para
+                    cobrança depois.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -885,7 +885,7 @@ export default function AtendentePanel() {
                       type="search"
                       value={search}
                       onChange={(event) => setSearch(event.target.value)}
-                      placeholder="Buscar item do cardapio"
+                      placeholder="Buscar item do cardápio"
                       className="w-full rounded-2xl border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-secondary/50 sm:max-w-xs"
                     />
                   ) : null}
@@ -926,7 +926,7 @@ export default function AtendentePanel() {
 
                   {isLoadingProducts ? (
                     <div className="mt-6 text-sm text-gray-500">
-                      Carregando cardapio...
+                      Carregando cardápio...
                     </div>
                   ) : (
                     <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -964,7 +964,7 @@ export default function AtendentePanel() {
                     Pedidos prontos
                   </h2>
                   <p className="mt-1 text-xs text-gray-500">
-                    Todos os pedidos liberados para levar ate a mesa ou comanda.
+                    Todos os pedidos liberados para levar até a mesa ou comanda.
                   </p>
                 </div>
                 <span className="rounded-2xl bg-green-100 px-3 py-2 text-xs font-semibold text-green-700">
@@ -1045,11 +1045,11 @@ export default function AtendentePanel() {
 
               {isLoadingActiveOrders ? (
                 <div className="mt-4 text-sm text-gray-500">
-                  Carregando histÃ³ricoâ€¦
+                  Carregando histórico...
                 </div>
               ) : visibleTargetOrders.length === 0 ? (
                 <div className="mt-4 rounded-2xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
-                  Nenhum pedido lanÃ§ado para essa {targetLabel} hoje.
+                  Nenhum pedido lançado para essa {targetLabel} hoje.
                 </div>
               ) : (
                 <div className="mt-4 space-y-3">
@@ -1094,7 +1094,7 @@ export default function AtendentePanel() {
                             className="flex justify-between gap-3"
                           >
                             <span>
-                              {item.quantity}Ã— {item.product?.name ?? "Item"}
+                              {item.quantity}× {item.product?.name ?? "Item"}
                             </span>
                             <span>
                               {currency(
@@ -1137,10 +1137,10 @@ export default function AtendentePanel() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-display text-xl text-primary">
-                  ðŸ§¾ Fechamento da {targetLabel}
+                  Fechamento da {targetLabel}
                 </h2>
                 <p className="mt-1 text-xs text-gray-500">
-                  Revise os itens do pedido atual antes de lanÃ§ar para a {targetLabel}.
+                  Revise os itens do pedido atual antes de lançar para a {targetLabel}.
                 </p>
               </div>
               {selectedTarget ? (
@@ -1154,7 +1154,7 @@ export default function AtendentePanel() {
 
             {items.length === 0 ? (
               <div className="mt-6 rounded-2xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
-                Adicione itens do cardÃ¡pio para montar o pedido desta {targetLabel}.
+                Adicione itens do cardápio para montar o pedido desta {targetLabel}.
               </div>
             ) : (
               <div className="mt-5 space-y-3">
@@ -1232,7 +1232,7 @@ export default function AtendentePanel() {
             )}
 
             <label className="mt-5 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-              ObservaÃ§Ãµes do pedido
+              Observações do pedido
             </label>
             <textarea
               rows={4}
@@ -1277,8 +1277,8 @@ export default function AtendentePanel() {
                 className="flex-[1.4] rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-secondary disabled:opacity-50"
               >
                 {createMesaOrderMutation.isPending
-                  ? "LanÃ§ando..."
-                  : `LanÃ§ar pedido na ${targetLabel}`}
+                  ? "Lançando..."
+                  : `Lançar pedido na ${targetLabel}`}
               </button>
             </div>
           </section>
