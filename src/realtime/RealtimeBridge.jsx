@@ -118,6 +118,8 @@ export default function RealtimeBridge() {
 
       if (STAFF_ROLES.has(user.role)) {
         queryClient.invalidateQueries({ queryKey: ["kitchen-orders"] });
+        queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
+        queryClient.invalidateQueries({ queryKey: ["waiter-drink-orders"] });
         invalidateAdminQueries(queryClient);
         incrementStaffUnreadCount();
         dispatchRealtimeEvent("pc:order-created", payload);
@@ -136,6 +138,9 @@ export default function RealtimeBridge() {
     const onOrderStatusUpdated = (payload) => {
       if (user.role === "CLIENTE") {
         queryClient.invalidateQueries({ queryKey: ["my-orders"] });
+        if (payload.waiterItemsDelivered) {
+          return;
+        }
         if (payload.status === "CANCELADO") {
           const msg = payload.paymentWasPending
             ? "Seu pedido foi cancelado: pagamento não recebido."
@@ -151,6 +156,8 @@ export default function RealtimeBridge() {
 
       if (STAFF_ROLES.has(user.role)) {
         queryClient.invalidateQueries({ queryKey: ["kitchen-orders"] });
+        queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
+        queryClient.invalidateQueries({ queryKey: ["waiter-drink-orders"] });
         invalidateAdminQueries(queryClient);
         dispatchRealtimeEvent("pc:order-status-updated", payload);
       }

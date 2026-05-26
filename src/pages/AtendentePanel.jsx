@@ -149,6 +149,12 @@ function formatRelativeTime(timestamp) {
   return `${Math.floor(diff / 3600)}h atrás`;
 }
 
+function getPendingWaiterItems(order) {
+  return (order.items ?? []).filter(
+    (item) => item.product?.waiterOnly && !item.waiterDeliveredAt,
+  );
+}
+
 export default function AtendentePanel() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -407,6 +413,19 @@ export default function AtendentePanel() {
     [orders],
   );
 
+  const waiterDrinkOrders = useMemo(
+    () =>
+      orders
+        .filter((order) => !["ENTREGUE", "CANCELADO"].includes(order.status))
+        .map((order) => ({
+          ...order,
+          waiterItems: getPendingWaiterItems(order),
+        }))
+        .filter((order) => order.waiterItems.length > 0)
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)),
+    [orders],
+  );
+
   const getOrderOriginLabel = useCallback((order) => {
     if (order.mesa) {
       return order.mesa.name ?? `Mesa ${order.mesa.number ?? ""}`.trim();
@@ -510,9 +529,43 @@ export default function AtendentePanel() {
     },
   });
 
+  const deliverWaiterItemsMutation = useMutation({
+    mutationFn: async ({ orderId, itemIds }) => {
+      const res = await api.patch(`/orders/${orderId}/waiter-items/delivered`, {
+        itemIds,
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["atendente-mesa-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["atendente-comanda-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["waiter-drink-orders"] });
+      toast.success("Bebida entregue.");
+    },
+    onError: (error) => {
+      const message =
+        error?.response?.data?.error?.message ||
+        "Não foi possível dar baixa na bebida.";
+      toast.error(message);
+    },
+  });
+
   const handleMarkDelivered = useCallback(
     (orderId) => advanceMutation.mutate({ orderId, status: "ENTREGUE" }),
     [advanceMutation],
+  );
+
+  const handleMarkWaiterItemsDelivered = useCallback(
+    (order) => {
+      const itemIds = getPendingWaiterItems(order).map((item) => item.id);
+      if (!itemIds.length) {
+        toast.error("Esse pedido não possui bebida pendente.");
+        return;
+      }
+      deliverWaiterItemsMutation.mutate({ orderId: order.id, itemIds });
+    },
+    [deliverWaiterItemsMutation],
   );
 
   const handleMarkPaid = useCallback(
@@ -579,6 +632,13 @@ export default function AtendentePanel() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate("/bebidas")}
+              className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-900/30"
+            >
+              Bebidas
+            </button>
             <button
               type="button"
               onClick={() => navigate("/caixa")}
@@ -951,6 +1011,80 @@ export default function AtendentePanel() {
                 >
                   Mostrar produtos para montar o pedido
                 </button>
+              )}
+            </section>
+
+            <section className="scroll-mt-6 rounded-3xl border border-cyan-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-display text-xl text-primary">
+                    Bebidas do garçom
+                  </h2>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Itens somente garçom pendentes para mesa ou comanda.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-2xl bg-cyan-100 px-3 py-2 text-xs font-semibold text-cyan-700">
+                    {waiterDrinkOrders.length} pedido(s)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/bebidas")}
+                    className="rounded-2xl border border-cyan-300 bg-cyan-50 px-3 py-2 text-xs font-bold text-cyan-700 transition hover:bg-cyan-100"
+                  >
+                    Abrir tela
+                  </button>
+                </div>
+              </div>
+
+              {waiterDrinkOrders.length === 0 ? (
+                <div className="mt-4 rounded-2xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+                  Nenhuma bebida pendente no momento.
+                </div>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  {waiterDrinkOrders.map((order) => (
+                    <article
+                      key={`waiter-drinks-${order.id}`}
+                      className="rounded-2xl border border-cyan-200 bg-cyan-50/40 p-4"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-display text-lg text-primary">
+                            {getOrderOriginLabel(order)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Pedido #{order.id.slice(-6).toUpperCase()} •{" "}
+                            {formatRelativeTime(order.createdAt)}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-cyan-100 px-2 py-1 text-[11px] font-semibold text-cyan-700">
+                          {order.waiterItems.length} bebida(s)
+                        </span>
+                      </div>
+
+                      <ul className="mt-3 space-y-1 text-xs text-gray-600">
+                        {order.waiterItems.map((item) => (
+                          <li key={item.id}>
+                            {item.quantity}x {item.product?.name ?? "Item"}
+                          </li>
+                        ))}
+                      </ul>
+
+                      <div className="mt-4 flex justify-end border-t border-cyan-100 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => handleMarkWaiterItemsDelivered(order)}
+                          disabled={deliverWaiterItemsMutation.isPending}
+                          className="rounded-xl bg-green-600 px-4 py-2 text-xs font-black uppercase text-white transition hover:bg-green-700 disabled:opacity-50"
+                        >
+                          Entregue só a bebida
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
               )}
             </section>
 

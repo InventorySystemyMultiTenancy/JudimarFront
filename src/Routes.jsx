@@ -13,6 +13,7 @@ import CheckoutReturnPage from "./pages/CheckoutReturnPage.jsx";
 import ClientDashboardPage from "./pages/ClientDashboardPage.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import KitchenPage from "./pages/KitchenPage.jsx";
+import WaiterDrinksPage from "./pages/WaiterDrinksPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import MotoboyPage from "./pages/MotoboyPage.jsx";
 import MesaAccessPage from "./pages/MesaAccessPage.jsx";
@@ -71,6 +72,14 @@ function AppRoutes() {
         }
       >
         <Route path="/cozinha" element={<KitchenPage />} />
+      </Route>
+
+      <Route
+        element={
+          <PrivateRoute allowedRoles={["ADMIN", "FUNCIONARIO", "ATENDENTE"]} />
+        }
+      >
+        <Route path="/bebidas" element={<WaiterDrinksPage />} />
       </Route>
 
       <Route
