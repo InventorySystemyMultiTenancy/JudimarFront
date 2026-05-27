@@ -86,8 +86,12 @@ const NEXT_LABEL = {
   SAIU_PARA_ENTREGA: "Marcar Entregue",
 };
 
+function isInHouseOrder(order) {
+  return !!(order?.mesaId || order?.comandaId || order?.mesa || order?.comanda);
+}
+
 function getNextStageKey(status, order) {
-  if ((order?.mesaId || order?.isPickup) && status === "PREPARANDO") {
+  if ((isInHouseOrder(order) || order?.isPickup) && status === "PREPARANDO") {
     return "SAIU_PARA_ENTREGA";
   }
 
@@ -95,7 +99,7 @@ function getNextStageKey(status, order) {
 }
 
 function getNextColumnKey(status, order) {
-  if (order?.mesaId && status === "PREPARANDO") {
+  if (isInHouseOrder(order) && status === "PREPARANDO") {
     return "LEVAR_PARA_MESA";
   }
 
@@ -191,7 +195,7 @@ function OrderCard({
   const needsCodeConfirm =
     order.status === "SAIU_PARA_ENTREGA" &&
     !order.isPickup &&
-    !order.mesaId &&
+    !isInHouseOrder(order) &&
     !!onConfirmDelivery;
   const nextStatus = getNextStageKey(order.status, order);
   const hasNext = !!nextStatus && !onConfirmPayment && !needsCodeConfirm;
@@ -201,14 +205,20 @@ function OrderCard({
 
   const advanceLabel = advancing
     ? t("KITCHEN_UPDATING", "Atualizando...")
-    : order.mesaId && order.status === "PREPARANDO"
-      ? t("KITCHEN_ADVANCE_TO_TABLE", "Levar para a Mesa")
+    : isInHouseOrder(order) && order.status === "PREPARANDO"
+      ? order.comandaId || order.comanda
+        ? "Levar para a Comanda"
+        : t("KITCHEN_ADVANCE_TO_TABLE", "Levar para a Mesa")
       : order.isPickup && order.status === "PREPARANDO"
         ? t("KITCHEN_READY_PICKUP", "Pronto p/ Retirada")
-      : order.mesaId && order.status === "PRONTO"
-      ? t("KITCHEN_ADVANCE_TO_TABLE", "Levar para a Mesa")
-      : order.mesaId && order.status === "SAIU_PARA_ENTREGA"
-        ? t("KITCHEN_DELIVERED_AT_TABLE", "Entregue na Mesa")
+      : isInHouseOrder(order) && order.status === "PRONTO"
+      ? order.comandaId || order.comanda
+        ? "Levar para a Comanda"
+        : t("KITCHEN_ADVANCE_TO_TABLE", "Levar para a Mesa")
+      : isInHouseOrder(order) && order.status === "SAIU_PARA_ENTREGA"
+        ? order.comandaId || order.comanda
+          ? "Entregue na Comanda"
+          : t("KITCHEN_DELIVERED_AT_TABLE", "Entregue na Mesa")
         : order.isPickup && order.status === "PRONTO"
           ? t("KITCHEN_READY_PICKUP", "Pronto p/ Retirada")
           : order.isPickup && order.status === "SAIU_PARA_ENTREGA"
@@ -479,7 +489,7 @@ function OrderCard({
 
       {/* Motoboy assignment — delivery orders only (not mesa) */}
       {!order.isPickup &&
-        !order.mesaId &&
+        !isInHouseOrder(order) &&
         onAssignMotoboy &&
         motoboys.length > 0 && (
           <div className="mt-3 border-t border-gray-200 pt-3">
@@ -928,13 +938,16 @@ function KitchenPage() {
             (o.status === "RECEBIDO" || o.status === "PREPARANDO") &&
             o.paymentStatus === "PENDENTE" &&
             o.paymentMethod !== "PAGAR_DEPOIS" &&
-            !o.mesaId,
+            !isInHouseOrder(o),
         );
       }
       if (columnKey === "SAIU_PARA_ENTREGA") {
         // Só entregas normais (não mesa, não retirada)
         return visibleOrders.filter(
-          (o) => o.status === "SAIU_PARA_ENTREGA" && !o.isPickup && !o.mesaId,
+          (o) =>
+            o.status === "SAIU_PARA_ENTREGA" &&
+            !o.isPickup &&
+            !isInHouseOrder(o),
         );
       }
       if (columnKey === "RETIRADA_PRONTA") {
@@ -944,7 +957,7 @@ function KitchenPage() {
       }
       if (columnKey === "LEVAR_PARA_MESA") {
         return visibleOrders.filter(
-          (o) => o.status === "SAIU_PARA_ENTREGA" && !!o.mesaId,
+          (o) => o.status === "SAIU_PARA_ENTREGA" && isInHouseOrder(o),
         );
       }
       return visibleOrders.filter((o) => o.status === columnKey);
@@ -1462,7 +1475,7 @@ function KitchenPage() {
                         cancelling={isCancelling && cancelVars === order.id}
                         motoboys={motoboys}
                         onAssignMotoboy={
-                          !order.isPickup && !order.mesaId
+                          !order.isPickup && !isInHouseOrder(order)
                             ? (orderId, motoboyId) =>
                                 assignMotoboy({ orderId, motoboyId })
                             : undefined
@@ -1471,7 +1484,7 @@ function KitchenPage() {
                           isAssigning && assignVars?.orderId === order.id
                         }
                         onConfirmDelivery={
-                          !order.isPickup && !order.mesaId
+                          !order.isPickup && !isInHouseOrder(order)
                             ? (orderId, code) =>
                                 confirmDelivery({ orderId, code })
                             : undefined
