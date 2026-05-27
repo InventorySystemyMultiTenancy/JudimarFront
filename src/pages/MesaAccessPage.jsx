@@ -21,15 +21,18 @@ function MesaAccessPage() {
       .get(`/mesas/acesso/${token}`)
       .then((res) => {
         const { accessToken, mesa } = res.data.data;
-        login({
-          accessToken,
-          user: {
-            id: mesa.id,
-            name: mesa.name,
-            role: "MESA",
-            mesaNumber: mesa.number,
+        login(
+          {
+            accessToken,
+            user: {
+              id: mesa.id,
+              name: mesa.name,
+              role: "MESA",
+              mesaNumber: mesa.number,
+            },
           },
-        });
+          { persist: "session" },
+        );
         navigate("/cardapio-mesa", { replace: true });
       })
       .catch(() => setStatus("error"));
