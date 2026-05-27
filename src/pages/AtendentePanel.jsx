@@ -155,6 +155,35 @@ function getPendingWaiterItems(order) {
   );
 }
 
+function isDeliveredWaiterItem(item) {
+  return Boolean(item.product?.waiterOnly && item.waiterDeliveredAt);
+}
+
+function OrderItemName({ item }) {
+  const delivered = isDeliveredWaiterItem(item);
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 ${
+        delivered ? "text-emerald-700 line-through decoration-2" : ""
+      }`}
+    >
+      {delivered ? (
+        <span
+          className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-black leading-none text-white"
+          aria-label="Entregue"
+          title="Entregue"
+        >
+          ✓
+        </span>
+      ) : null}
+      <span>
+        {item.quantity}x {item.product?.name ?? "Item"}
+      </span>
+    </span>
+  );
+}
+
 export default function AtendentePanel() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -1156,7 +1185,7 @@ export default function AtendentePanel() {
                       <ul className="mt-3 space-y-1 text-xs text-gray-600">
                         {(order.items ?? []).map((item) => (
                           <li key={item.id}>
-                            {item.quantity}x {item.product?.name ?? "Item"}
+                            <OrderItemName item={item} />
                           </li>
                         ))}
                       </ul>
@@ -1245,9 +1274,7 @@ export default function AtendentePanel() {
                             key={item.id}
                             className="flex justify-between gap-3"
                           >
-                            <span>
-                              {item.quantity}× {item.product?.name ?? "Item"}
-                            </span>
+                            <OrderItemName item={item} />
                             <span>
                               {currency(
                                 item.totalPrice ??
