@@ -442,8 +442,16 @@ export default function AtendentePanel() {
 
   // Avançar status do pedido
   const advanceMutation = useMutation({
-    mutationFn: async ({ orderId, status }) => {
-      const res = await api.patch(`/orders/${orderId}/status`, { status });
+    mutationFn: async ({ orderId, status, statuses }) => {
+      const statusSteps = statuses ?? [status];
+      let res = null;
+
+      for (const nextStatus of statusSteps) {
+        res = await api.patch(`/orders/${orderId}/status`, {
+          status: nextStatus,
+        });
+      }
+
       return res.data;
     },
     onSuccess: () => {
@@ -458,7 +466,11 @@ export default function AtendentePanel() {
       });
       toast.success("Status atualizado!");
     },
-    onError: () => toast.error("Erro ao atualizar status"),
+    onError: (error) => {
+      const message =
+        error?.response?.data?.error?.message || "Erro ao atualizar status";
+      toast.error(message);
+    },
   });
 
   const createMesaOrderMutation = useMutation({
@@ -552,7 +564,14 @@ export default function AtendentePanel() {
   });
 
   const handleMarkDelivered = useCallback(
-    (orderId) => advanceMutation.mutate({ orderId, status: "ENTREGUE" }),
+    (order) => {
+      const statuses =
+        order.status === "PRONTO"
+          ? ["SAIU_PARA_ENTREGA", "ENTREGUE"]
+          : ["ENTREGUE"];
+
+      advanceMutation.mutate({ orderId: order.id, statuses });
+    },
     [advanceMutation],
   );
 
@@ -1145,7 +1164,7 @@ export default function AtendentePanel() {
                       <div className="mt-4 flex justify-end border-t border-green-100 pt-3">
                         <button
                           type="button"
-                          onClick={() => handleMarkDelivered(order.id)}
+                          onClick={() => handleMarkDelivered(order)}
                           disabled={advanceMutation.isPending}
                           className="rounded-xl bg-green-600 px-4 py-2 text-xs font-black uppercase text-white transition hover:bg-green-700 disabled:opacity-50"
                         >
