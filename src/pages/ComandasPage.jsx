@@ -86,6 +86,7 @@ export default function ComandasPage() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState("");
   const [form, setForm] = useState({ name: "", number: "" });
+  const [editingComanda, setEditingComanda] = useState(null);
   const [cart, setCart] = useState([]);
   const [notes, setNotes] = useState("");
   const [qrComanda, setQrComanda] = useState(null);
@@ -144,6 +145,37 @@ export default function ComandasPage() {
       toast.error(err?.response?.data?.error?.message ?? "Erro ao criar."),
   });
 
+  const updateComanda = useMutation({
+    mutationFn: async () =>
+      api.put(`/comandas/${editingComanda.id}`, {
+        name: editingComanda.name.trim(),
+        number: Number(editingComanda.number),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["comandas"] });
+      setEditingComanda(null);
+      toast.success("Comanda atualizada.");
+    },
+    onError: (err) =>
+      toast.error(err?.response?.data?.error?.message ?? "Erro ao editar."),
+  });
+
+  const deleteComanda = useMutation({
+    mutationFn: async (comandaId) => api.delete(`/comandas/${comandaId}`),
+    onSuccess: (_data, comandaId) => {
+      queryClient.invalidateQueries({ queryKey: ["comandas"] });
+      queryClient.invalidateQueries({ queryKey: ["comandas-open-totals"] });
+      if (selectedId === comandaId) {
+        setSelectedId("");
+        setCart([]);
+        setNotes("");
+      }
+      toast.success("Comanda excluída.");
+    },
+    onError: (err) =>
+      toast.error(err?.response?.data?.error?.message ?? "Erro ao excluir."),
+  });
+
   const createOrder = useMutation({
     mutationFn: async () =>
       api.post(`/comandas/${selectedId}/orders`, {
@@ -184,6 +216,14 @@ export default function ComandasPage() {
       text: "Escolha a forma de pagamento recebida.",
     });
     if (paymentMethod) markPaid.mutate({ orderId, paymentMethod });
+  };
+
+  const handleDeleteComanda = (comanda) => {
+    const confirmed = window.confirm(
+      `Excluir Comanda ${comanda.number} - ${comanda.name}?`,
+    );
+    if (!confirmed) return;
+    deleteComanda.mutate(comanda.id);
   };
 
   const addProduct = (product) => {
@@ -289,6 +329,61 @@ export default function ComandasPage() {
                     <strong>{currency(stats?.pendingTotal ?? 0)}</strong>
                   </p>
                 </button>
+                {isAdmin && editingComanda?.id === comanda.id ? (
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      if (
+                        !editingComanda.name.trim() ||
+                        !Number(editingComanda.number)
+                      ) {
+                        toast.error("Informe nome e número da comanda.");
+                        return;
+                      }
+                      updateComanda.mutate();
+                    }}
+                    className="mt-3 space-y-2 rounded-2xl border border-gold/20 bg-accent/40 p-3"
+                  >
+                    <input
+                      value={editingComanda.name}
+                      onChange={(event) =>
+                        setEditingComanda((current) => ({
+                          ...current,
+                          name: event.target.value,
+                        }))
+                      }
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gold"
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      value={editingComanda.number}
+                      onChange={(event) =>
+                        setEditingComanda((current) => ({
+                          ...current,
+                          number: event.target.value,
+                        }))
+                      }
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gold"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="submit"
+                        disabled={updateComanda.isPending}
+                        className="rounded-xl bg-primary px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                      >
+                        Salvar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingComanda(null)}
+                        className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                ) : null}
                 <div className="mt-3">
                   <button
                     type="button"
@@ -298,6 +393,31 @@ export default function ComandasPage() {
                     QR Code
                   </button>
                 </div>
+                {isAdmin ? (
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingComanda({
+                          id: comanda.id,
+                          name: comanda.name ?? "",
+                          number: String(comanda.number ?? ""),
+                        })
+                      }
+                      className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteComanda(comanda)}
+                      disabled={deleteComanda.isPending}
+                      className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 disabled:opacity-50"
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                ) : null}
               </article>
             );
           })}
