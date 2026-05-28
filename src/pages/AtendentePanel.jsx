@@ -739,8 +739,12 @@ export default function AtendentePanel() {
             >
               {createComandaMutation.isPending
                 ? "Criando..."
-                : "Criar comanda"}
+                : "Criar comanda temporária"}
             </button>
+            <p className="text-xs font-semibold text-gray-500 md:col-span-3">
+              Comandas criadas pelo atendente são temporárias e serão removidas
+              automaticamente às 00h. Os pedidos continuam salvos.
+            </p>
           </form>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
