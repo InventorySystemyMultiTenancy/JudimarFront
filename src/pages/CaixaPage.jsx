@@ -148,6 +148,7 @@ function PendingOrderCard({ order, onPay, disabled }) {
 export default function CaixaPage() {
   const queryClient = useQueryClient();
   const [originFilter, setOriginFilter] = useState("TODOS");
+  const [comandaSearch, setComandaSearch] = useState("");
 
   const { data: orders = [], isLoading, isError } = useQuery({
     queryKey: ["caixa-pending-payments"],
@@ -180,9 +181,22 @@ export default function CaixaPage() {
   }, [orders]);
 
   const filteredOrders = useMemo(() => {
-    if (originFilter === "TODOS") return orders;
-    return orders.filter((order) => getOrigin(order).type === originFilter);
-  }, [orders, originFilter]);
+    const normalizedComandaSearch = comandaSearch.trim().toLowerCase();
+
+    return orders.filter((order) => {
+      const matchesOrigin =
+        originFilter === "TODOS" || getOrigin(order).type === originFilter;
+
+      if (!matchesOrigin) return false;
+      if (!normalizedComandaSearch) return true;
+
+      if (!order.comanda) return false;
+
+      const haystack =
+        `${order.comanda.name ?? ""} ${order.comanda.number ?? ""}`.toLowerCase();
+      return haystack.includes(normalizedComandaSearch);
+    });
+  }, [comandaSearch, orders, originFilter]);
 
   const handlePay = async (order) => {
     const paymentMethod = await askPaymentMethod({
@@ -241,21 +255,30 @@ export default function CaixaPage() {
           </div>
         </section>
 
-        <div className="mb-6 flex flex-wrap gap-2">
-          {filters.map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => setOriginFilter(filter)}
-              className={`rounded-full px-4 py-2 text-sm font-black ${
-                originFilter === filter
-                  ? "bg-primary text-white"
-                  : "border border-gray-200 bg-white text-gray-600"
-              }`}
-            >
-              {filter}
-            </button>
-          ))}
+        <div className="mb-6 space-y-3">
+          <input
+            type="search"
+            value={comandaSearch}
+            onChange={(event) => setComandaSearch(event.target.value)}
+            placeholder="Pesquisar comanda por nome ou número"
+            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm outline-none transition placeholder:text-gray-400 focus:border-gold/60"
+          />
+          <div className="flex flex-wrap gap-2">
+            {filters.map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setOriginFilter(filter)}
+                className={`rounded-full px-4 py-2 text-sm font-black ${
+                  originFilter === filter
+                    ? "bg-primary text-white"
+                    : "border border-gray-200 bg-white text-gray-600"
+                }`}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
         </div>
 
         {isLoading ? (
