@@ -199,6 +199,7 @@ export default function AtendentePanel() {
   const [waiterCalls, setWaiterCalls] = useState(() => getWaiterCalls());
   const [, setRelativeTimeTick] = useState(0);
   const [selectedComandaId, setSelectedComandaId] = useState("");
+  const [newComanda, setNewComanda] = useState({ name: "", number: "" });
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [showProducts, setShowProducts] = useState(false);
@@ -398,6 +399,33 @@ export default function AtendentePanel() {
 
   const notes = mesaNotes[notesKey] ?? "";
 
+  const createComandaMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post("/comandas", {
+        name: newComanda.name.trim(),
+        number: Number(newComanda.number),
+      });
+      return res.data?.data;
+    },
+    onSuccess: (comanda) => {
+      setNewComanda({ name: "", number: "" });
+      if (comanda?.id) {
+        setSelectedComandaId(comanda.id);
+      }
+      queryClient.invalidateQueries({ queryKey: ["atendente-comandas"] });
+      queryClient.invalidateQueries({
+        queryKey: ["atendente-comanda-open-totals"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["comandas"] });
+      toast.success("Comanda criada.");
+    },
+    onError: (error) => {
+      const message =
+        error?.response?.data?.error?.message || "Erro ao criar comanda.";
+      toast.error(message);
+    },
+  });
+
   // Avançar status do pedido
   const advanceMutation = useMutation({
     mutationFn: async ({ orderId, status, statuses }) => {
@@ -587,6 +615,20 @@ export default function AtendentePanel() {
     createMesaOrderMutation.mutate();
   }, [createMesaOrderMutation, items.length, selectedTargetId, targetLabel]);
 
+  const handleCreateComanda = useCallback(
+    (event) => {
+      event.preventDefault();
+
+      if (!newComanda.name.trim() || !newComanda.number) {
+        toast.error("Informe nome e número da comanda.");
+        return;
+      }
+
+      createComandaMutation.mutate();
+    },
+    [createComandaMutation, newComanda.name, newComanda.number],
+  );
+
   return (
     <div className="min-h-screen bg-accent/30 font-body">
       {/* Header */}
@@ -707,6 +749,46 @@ export default function AtendentePanel() {
               Comandas abertas: <strong>{comandas.length}</strong>
             </div>
           </div>
+
+          <form
+            onSubmit={handleCreateComanda}
+            className="mt-4 grid gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_160px_auto]"
+          >
+            <input
+              type="text"
+              value={newComanda.name}
+              onChange={(event) =>
+                setNewComanda((prev) => ({
+                  ...prev,
+                  name: event.target.value,
+                }))
+              }
+              placeholder="Nome da comanda"
+              className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-secondary/60"
+            />
+            <input
+              type="number"
+              min="1"
+              value={newComanda.number}
+              onChange={(event) =>
+                setNewComanda((prev) => ({
+                  ...prev,
+                  number: event.target.value,
+                }))
+              }
+              placeholder="Número"
+              className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-secondary/60"
+            />
+            <button
+              type="submit"
+              disabled={createComandaMutation.isPending}
+              className="rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white transition hover:bg-secondary disabled:opacity-50"
+            >
+              {createComandaMutation.isPending
+                ? "Criando..."
+                : "Criar comanda"}
+            </button>
+          </form>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {comandas.map((comanda) => {
