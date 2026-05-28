@@ -14,8 +14,6 @@ import {
   subscribeToWaiterCalls,
 } from "../lib/waiterCallsStore.js";
 
-const ACTIVE_STATUSES = ["RECEBIDO", "PREPARANDO", "PRONTO", "LEVAR_PARA_MESA"];
-
 const STATUS_LABEL = {
   RECEBIDO: "Recebido",
   PREPARANDO: "Preparando",
@@ -199,9 +197,7 @@ export default function AtendentePanel() {
   } = useCart();
 
   const [waiterCalls, setWaiterCalls] = useState(() => getWaiterCalls());
-  const [now, setNow] = useState(Date.now());
-  const [selectedTargetType, setSelectedTargetType] = useState("mesa");
-  const [selectedMesaId, setSelectedMesaId] = useState("");
+  const [, setRelativeTimeTick] = useState(0);
   const [selectedComandaId, setSelectedComandaId] = useState("");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -213,7 +209,9 @@ export default function AtendentePanel() {
 
   // Atualiza relativeTime a cada 30s
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
+    const id = setInterval(() => {
+      setRelativeTimeTick((tick) => tick + 1);
+    }, 30_000);
     return () => clearInterval(id);
   }, []);
 
@@ -226,15 +224,6 @@ export default function AtendentePanel() {
     refetchInterval: 30_000,
   });
 
-  const { data: mesas = [] } = useQuery({
-    queryKey: ["atendente-mesas"],
-    queryFn: async () => {
-      const res = await api.get("/mesas");
-      return res.data?.data ?? [];
-    },
-    staleTime: 60_000,
-  });
-
   const { data: comandas = [] } = useQuery({
     queryKey: ["atendente-comandas"],
     queryFn: async () => {
@@ -242,15 +231,6 @@ export default function AtendentePanel() {
       return res.data?.data ?? [];
     },
     staleTime: 60_000,
-  });
-
-  const { data: mesaOpenTotals = [] } = useQuery({
-    queryKey: ["atendente-mesa-open-totals"],
-    queryFn: async () => {
-      const res = await api.get("/mesas/open-totals");
-      return res.data?.data ?? [];
-    },
-    refetchInterval: 15_000,
   });
 
   const { data: comandaOpenTotals = [] } = useQuery({
@@ -280,72 +260,28 @@ export default function AtendentePanel() {
     staleTime: 10 * 60 * 1000,
   });
 
-  useEffect(() => {
-    if (!selectedMesaId && mesas.length > 0) {
-      setSelectedMesaId(mesas[0].id);
-    }
-  }, [mesas, selectedMesaId]);
+  const selectedComandaTargetId = selectedComandaId || comandas[0]?.id || "";
 
   useEffect(() => {
-    const targetId =
-      selectedTargetType === "mesa" ? selectedMesaId : selectedComandaId;
-    const scopePrefix = selectedTargetType === "mesa" ? "mesa" : "comanda";
-    setCartScope(targetId ? `${scopePrefix}_${targetId}` : "default");
+    setCartScope(
+      selectedComandaTargetId ? `comanda_${selectedComandaTargetId}` : "default",
+    );
 
     return () => {
       setCartScope("default");
     };
-  }, [selectedComandaId, selectedMesaId, selectedTargetType, setCartScope]);
-
-  const { data: selectedMesaOrders = [], isLoading: isLoadingMesaOrders } =
-    useQuery({
-      queryKey: ["atendente-mesa-orders", selectedMesaId],
-      queryFn: async () => {
-        const res = await api.get(`/mesas/${selectedMesaId}/orders`);
-        return res.data?.data ?? [];
-      },
-      enabled: Boolean(selectedMesaId),
-      refetchInterval: 15_000,
-    });
+  }, [selectedComandaTargetId, setCartScope]);
 
   const { data: selectedComandaOrders = [], isLoading: isLoadingComandaOrders } =
     useQuery({
-      queryKey: ["atendente-comanda-orders", selectedComandaId],
+      queryKey: ["atendente-comanda-orders", selectedComandaTargetId],
       queryFn: async () => {
-        const res = await api.get(`/comandas/${selectedComandaId}/orders`);
+        const res = await api.get(`/comandas/${selectedComandaTargetId}/orders`);
         return res.data?.data ?? [];
       },
-      enabled: Boolean(selectedComandaId),
+      enabled: Boolean(selectedComandaTargetId),
       refetchInterval: 15_000,
     });
-
-  // Filtrar apenas pedidos de mesa com status ativo
-  const mesaOrders = useMemo(
-    () =>
-      orders
-        .filter(
-          (o) => o.orderType === "MESA" && ACTIVE_STATUSES.includes(o.status),
-        )
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [orders, now],
-  );
-
-  const selectedMesa = useMemo(
-    () => mesas.find((mesa) => mesa.id === selectedMesaId) ?? null,
-    [mesas, selectedMesaId],
-  );
-
-  const mesaStatsById = useMemo(() => {
-    const stats = new Map();
-    for (const row of mesaOpenTotals) {
-      stats.set(row.mesaId, {
-        active: row.activeCount,
-        pending: row.pendingTotal,
-      });
-    }
-    return stats;
-  }, [mesaOpenTotals]);
 
   const comandaStatsById = useMemo(() => {
     const stats = new Map();
@@ -360,8 +296,9 @@ export default function AtendentePanel() {
 
   const selectedComanda = useMemo(
     () =>
-      comandas.find((comanda) => comanda.id === selectedComandaId) ?? null,
-    [comandas, selectedComandaId],
+      comandas.find((comanda) => comanda.id === selectedComandaTargetId) ??
+      null,
+    [comandas, selectedComandaTargetId],
   );
 
   const categories = useMemo(() => {
@@ -389,24 +326,16 @@ export default function AtendentePanel() {
     });
   }, [products, search, selectedCategory]);
 
-  const activeOrders =
-    selectedTargetType === "mesa" ? selectedMesaOrders : selectedComandaOrders;
-  const isLoadingActiveOrders =
-    selectedTargetType === "mesa" ? isLoadingMesaOrders : isLoadingComandaOrders;
-  const selectedTarget =
-    selectedTargetType === "mesa" ? selectedMesa : selectedComanda;
-  const selectedTargetId =
-    selectedTargetType === "mesa" ? selectedMesaId : selectedComandaId;
-  const targetLabel = selectedTargetType === "mesa" ? "mesa" : "comanda";
+  const activeOrders = selectedComandaOrders;
+  const isLoadingActiveOrders = isLoadingComandaOrders;
+  const selectedTarget = selectedComanda;
+  const selectedTargetId = selectedComandaTargetId;
+  const targetLabel = "comanda";
   const selectedTargetName =
-    selectedTargetType === "mesa"
-      ? selectedMesa?.name
-      : selectedComanda
-        ? `Comanda ${selectedComanda.number} - ${selectedComanda.name}`
-        : "";
-  const notesKey = selectedTargetId
-    ? `${selectedTargetType}_${selectedTargetId}`
-    : "default";
+    selectedComanda
+      ? `Comanda ${selectedComanda.number} - ${selectedComanda.name}`
+      : "";
+  const notesKey = selectedTargetId ? `comanda_${selectedTargetId}` : "default";
 
   const pendingTargetTotal = useMemo(
     () =>
@@ -513,11 +442,10 @@ export default function AtendentePanel() {
         items: items.map(mapItemToApi).filter(Boolean),
       };
 
-      const endpoint =
-        selectedTargetType === "mesa"
-          ? `/mesas/${selectedTargetId}/orders`
-          : `/comandas/${selectedTargetId}/orders`;
-      const res = await api.post(endpoint, payload);
+      const res = await api.post(
+        `/comandas/${selectedTargetId}/orders`,
+        payload,
+      );
       return res.data?.data;
     },
     onSuccess: () => {
@@ -769,96 +697,6 @@ export default function AtendentePanel() {
         <section>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="font-display text-xl text-primary">Mesas</h2>
-              <p className="mt-1 text-xs text-gray-500">
-                Selecione a mesa para tirar o pedido e acompanhar o histórico do
-                dia.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 shadow-sm">
-              Pedidos ativos: <strong>{mesaOrders.length}</strong>
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {mesas.map((mesa) => {
-              const stats = mesaStatsById.get(mesa.id) ?? {
-                active: 0,
-                pending: 0,
-              };
-              const isSelected =
-                selectedTargetType === "mesa" && mesa.id === selectedMesaId;
-
-              return (
-                <button
-                  key={mesa.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedTargetType("mesa");
-                    setSelectedMesaId(mesa.id);
-                  }}
-                  className={`rounded-2xl border p-4 text-left transition ${
-                    isSelected
-                      ? "border-secondary bg-white shadow-md"
-                      : "border-gray-200 bg-white/80 hover:border-secondary/30"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-display text-lg text-primary">
-                        {mesa.name}
-                      </p>
-                      <p className="text-xs uppercase tracking-[0.2em] text-gray-400">
-                        Mesa {mesa.number}
-                      </p>
-                    </div>
-                    {stats.active ? (
-                      <span className="rounded-full bg-primary px-2 py-1 text-[11px] font-semibold text-white">
-                        {stats.active} ativos
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-3 text-xs text-gray-500">
-                    Em aberto: <strong>{currency(stats.pending)}</strong>
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-
-          {selectedTargetType === "mesa" && selectedMesa ? (
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <button
-                type="button"
-                onClick={() => scrollToPanelSection("mesa-fechamento")}
-                className="rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-secondary"
-              >
-                Fechamento da mesa
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowProducts(true);
-                  scrollToPanelSection("mesa-cardapio");
-                }}
-                className="rounded-2xl border border-secondary/40 bg-white px-4 py-3 text-sm font-bold text-secondary shadow-sm transition hover:bg-secondary/10"
-              >
-                Cardápio
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToPanelSection("mesa-historico")}
-                className="rounded-2xl border border-primary/20 bg-white px-4 py-3 text-sm font-bold text-primary shadow-sm transition hover:bg-primary/5"
-              >
-                Histórico da mesa
-              </button>
-            </div>
-          ) : null}
-        </section>
-
-        <section>
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
               <h2 className="font-display text-xl text-primary">Comandas</h2>
               <p className="mt-1 text-xs text-gray-500">
                 Selecione a comanda para lançar pedido e acompanhar o histórico
@@ -876,16 +714,13 @@ export default function AtendentePanel() {
                 active: 0,
                 pending: 0,
               };
-              const isSelected =
-                selectedTargetType === "comanda" &&
-                comanda.id === selectedComandaId;
+              const isSelected = comanda.id === selectedComandaTargetId;
 
               return (
                 <button
                   key={comanda.id}
                   type="button"
                   onClick={() => {
-                    setSelectedTargetType("comanda");
                     setSelectedComandaId(comanda.id);
                   }}
                   className={`rounded-2xl border p-4 text-left transition ${
@@ -917,7 +752,7 @@ export default function AtendentePanel() {
             })}
           </div>
 
-          {selectedTargetType === "comanda" && selectedComanda ? (
+          {selectedComanda ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <button
                 type="button"
@@ -1324,9 +1159,7 @@ export default function AtendentePanel() {
               </div>
               {selectedTarget ? (
                 <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white">
-                  {selectedTargetType === "mesa"
-                    ? `Mesa ${selectedMesa.number}`
-                    : `Comanda ${selectedComanda.number}`}
+                  Comanda {selectedComanda.number}
                 </span>
               ) : null}
             </div>
