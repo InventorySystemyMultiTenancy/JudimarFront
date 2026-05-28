@@ -197,6 +197,7 @@ export default function AtendentePanel() {
   const [comandaSearch, setComandaSearch] = useState("");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [showComandas, setShowComandas] = useState(true);
   const [showProducts, setShowProducts] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
   const [mesaNotes, setMesaNotes] = useState({});
@@ -742,85 +743,108 @@ export default function AtendentePanel() {
             </button>
           </form>
 
-          <div className="mt-4">
-            <input
-              type="search"
-              value={comandaSearch}
-              onChange={(event) => setComandaSearch(event.target.value)}
-              placeholder="Pesquisar comanda por nome ou número"
-              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-secondary/60"
-            />
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+              {selectedComanda
+                ? `Selecionada: Comanda ${selectedComanda.number}`
+                : "Nenhuma comanda selecionada"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowComandas((value) => !value)}
+              className="rounded-full border border-secondary/40 bg-white px-4 py-2 text-xs font-bold text-secondary shadow-sm transition hover:bg-secondary/10"
+            >
+              {showComandas ? "Ocultar comandas" : "Mostrar comandas"}
+            </button>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {filteredComandas.map((comanda) => {
-              const stats = comandaStatsById.get(comanda.id) ?? {
-                active: 0,
-                pending: 0,
-              };
-              const isSelected = comanda.id === selectedComandaTargetId;
+          {showComandas ? (
+            <>
+              <div className="mt-4">
+                <input
+                  type="search"
+                  value={comandaSearch}
+                  onChange={(event) => setComandaSearch(event.target.value)}
+                  placeholder="Pesquisar comanda por nome ou número"
+                  className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-secondary/60"
+                />
+              </div>
 
-              return (
-                <button
-                  key={comanda.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedComandaId(comanda.id);
-                    setShowProducts(true);
-                    scrollToPanelSection("mesa-cardapio");
-                  }}
-                  className={`rounded-2xl border p-4 text-left transition ${
-                    isSelected
-                      ? "border-orange-600 bg-orange-500 text-white shadow-md"
-                      : "border-gray-200 bg-white/80 hover:border-secondary/30"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p
-                        className={`font-display text-lg ${
-                          isSelected ? "text-white" : "text-primary"
-                        }`}
-                      >
-                        Comanda {comanda.number}
-                      </p>
-                      <p
-                        className={`text-xs uppercase tracking-[0.2em] ${
-                          isSelected ? "text-white/80" : "text-gray-400"
-                        }`}
-                      >
-                        {comanda.name}
-                      </p>
-                    </div>
-                    {stats.active ? (
-                      <span
-                        className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
-                          isSelected
-                            ? "bg-white text-orange-600"
-                            : "bg-primary text-white"
-                        }`}
-                      >
-                        {stats.active} ativos
-                      </span>
-                    ) : null}
-                  </div>
-                  <p
-                    className={`mt-3 text-xs ${
-                      isSelected ? "text-white/90" : "text-gray-500"
-                    }`}
-                  >
-                    Em aberto: <strong>{currency(stats.pending)}</strong>
-                  </p>
-                </button>
-              );
-            })}
-          </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {filteredComandas.map((comanda) => {
+                  const stats = comandaStatsById.get(comanda.id) ?? {
+                    active: 0,
+                    pending: 0,
+                  };
+                  const isSelected = comanda.id === selectedComandaTargetId;
 
-          {comandas.length > 0 && filteredComandas.length === 0 ? (
-            <div className="mt-4 rounded-2xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
-              Nenhuma comanda encontrada.
+                  return (
+                    <button
+                      key={comanda.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedComandaId(comanda.id);
+                        setShowProducts(true);
+                        scrollToPanelSection("mesa-cardapio");
+                      }}
+                      className={`rounded-2xl border p-4 text-left transition ${
+                        isSelected
+                          ? "border-orange-600 bg-orange-500 text-white shadow-md"
+                          : "border-gray-200 bg-white/80 hover:border-secondary/30"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p
+                            className={`font-display text-lg ${
+                              isSelected ? "text-white" : "text-primary"
+                            }`}
+                          >
+                            Comanda {comanda.number}
+                          </p>
+                          <p
+                            className={`text-xs uppercase tracking-[0.2em] ${
+                              isSelected ? "text-white/80" : "text-gray-400"
+                            }`}
+                          >
+                            {comanda.name}
+                          </p>
+                        </div>
+                        {stats.active ? (
+                          <span
+                            className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                              isSelected
+                                ? "bg-white text-orange-600"
+                                : "bg-primary text-white"
+                            }`}
+                          >
+                            {stats.active} ativos
+                          </span>
+                        ) : null}
+                      </div>
+                      <p
+                        className={`mt-3 text-xs ${
+                          isSelected ? "text-white/90" : "text-gray-500"
+                        }`}
+                      >
+                        Em aberto: <strong>{currency(stats.pending)}</strong>
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {comandas.length > 0 && filteredComandas.length === 0 ? (
+                <div className="mt-4 rounded-2xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+                  Nenhuma comanda encontrada.
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <div className="mt-4 rounded-2xl border border-gray-200 bg-white/80 p-4 text-sm text-gray-600 shadow-sm">
+              Lista de comandas oculta.
             </div>
-          ) : null}
+          )}
 
           {selectedComanda ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -832,7 +856,7 @@ export default function AtendentePanel() {
                 }}
                 className="rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-secondary"
               >
-                Fechamento da comanda
+                Lançar pedido
               </button>
               <button
                 type="button"
