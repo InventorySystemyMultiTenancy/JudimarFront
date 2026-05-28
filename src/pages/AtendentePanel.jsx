@@ -199,7 +199,8 @@ export default function AtendentePanel() {
   const [waiterCalls, setWaiterCalls] = useState(() => getWaiterCalls());
   const [, setRelativeTimeTick] = useState(0);
   const [selectedComandaId, setSelectedComandaId] = useState("");
-  const [newComanda, setNewComanda] = useState({ name: "", number: "" });
+  const [newComandaName, setNewComandaName] = useState("");
+  const [comandaSearch, setComandaSearch] = useState("");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [showProducts, setShowProducts] = useState(false);
@@ -302,6 +303,25 @@ export default function AtendentePanel() {
     [comandas, selectedComandaTargetId],
   );
 
+  const filteredComandas = useMemo(() => {
+    const normalized = comandaSearch.trim().toLowerCase();
+    if (!normalized) return comandas;
+
+    return comandas.filter((comanda) => {
+      const haystack =
+        `${comanda.name ?? ""} ${comanda.number ?? ""}`.toLowerCase();
+      return haystack.includes(normalized);
+    });
+  }, [comandaSearch, comandas]);
+
+  const nextComandaNumber = useMemo(() => {
+    const highestNumber = comandas.reduce(
+      (highest, comanda) => Math.max(highest, Number(comanda.number) || 0),
+      0,
+    );
+    return highestNumber + 1;
+  }, [comandas]);
+
   const categories = useMemo(() => {
     const seen = new Set();
     const result = [];
@@ -402,13 +422,13 @@ export default function AtendentePanel() {
   const createComandaMutation = useMutation({
     mutationFn: async () => {
       const res = await api.post("/comandas", {
-        name: newComanda.name.trim(),
-        number: Number(newComanda.number),
+        name: newComandaName.trim(),
+        number: nextComandaNumber,
       });
       return res.data?.data;
     },
     onSuccess: (comanda) => {
-      setNewComanda({ name: "", number: "" });
+      setNewComandaName("");
       if (comanda?.id) {
         setSelectedComandaId(comanda.id);
       }
@@ -619,14 +639,14 @@ export default function AtendentePanel() {
     (event) => {
       event.preventDefault();
 
-      if (!newComanda.name.trim() || !newComanda.number) {
-        toast.error("Informe nome e número da comanda.");
+      if (!newComandaName.trim()) {
+        toast.error("Informe o nome da comanda.");
         return;
       }
 
       createComandaMutation.mutate();
     },
-    [createComandaMutation, newComanda.name, newComanda.number],
+    [createComandaMutation, newComandaName],
   );
 
   return (
@@ -752,33 +772,18 @@ export default function AtendentePanel() {
 
           <form
             onSubmit={handleCreateComanda}
-            className="mt-4 grid gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_160px_auto]"
+            className="mt-4 grid gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_auto_auto]"
           >
             <input
               type="text"
-              value={newComanda.name}
-              onChange={(event) =>
-                setNewComanda((prev) => ({
-                  ...prev,
-                  name: event.target.value,
-                }))
-              }
+              value={newComandaName}
+              onChange={(event) => setNewComandaName(event.target.value)}
               placeholder="Nome da comanda"
               className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-secondary/60"
             />
-            <input
-              type="number"
-              min="1"
-              value={newComanda.number}
-              onChange={(event) =>
-                setNewComanda((prev) => ({
-                  ...prev,
-                  number: event.target.value,
-                }))
-              }
-              placeholder="Número"
-              className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-secondary/60"
-            />
+            <div className="rounded-xl border border-gray-200 bg-accent/50 px-4 py-3 text-sm font-semibold text-primary">
+              Próxima: {nextComandaNumber}
+            </div>
             <button
               type="submit"
               disabled={createComandaMutation.isPending}
@@ -790,8 +795,18 @@ export default function AtendentePanel() {
             </button>
           </form>
 
+          <div className="mt-4">
+            <input
+              type="search"
+              value={comandaSearch}
+              onChange={(event) => setComandaSearch(event.target.value)}
+              placeholder="Pesquisar comanda por nome ou número"
+              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-secondary/60"
+            />
+          </div>
+
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {comandas.map((comanda) => {
+            {filteredComandas.map((comanda) => {
               const stats = comandaStatsById.get(comanda.id) ?? {
                 active: 0,
                 pending: 0,
@@ -853,6 +868,12 @@ export default function AtendentePanel() {
               );
             })}
           </div>
+
+          {comandas.length > 0 && filteredComandas.length === 0 ? (
+            <div className="mt-4 rounded-2xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+              Nenhuma comanda encontrada.
+            </div>
+          ) : null}
 
           {selectedComanda ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
