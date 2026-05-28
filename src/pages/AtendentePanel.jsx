@@ -804,29 +804,49 @@ export default function AtendentePanel() {
                   type="button"
                   onClick={() => {
                     setSelectedComandaId(comanda.id);
+                    setShowProducts(true);
+                    scrollToPanelSection("mesa-cardapio");
                   }}
                   className={`rounded-2xl border p-4 text-left transition ${
                     isSelected
-                      ? "border-secondary bg-white shadow-md"
+                      ? "border-orange-600 bg-orange-500 text-white shadow-md"
                       : "border-gray-200 bg-white/80 hover:border-secondary/30"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="font-display text-lg text-primary">
+                      <p
+                        className={`font-display text-lg ${
+                          isSelected ? "text-white" : "text-primary"
+                        }`}
+                      >
                         Comanda {comanda.number}
                       </p>
-                      <p className="text-xs uppercase tracking-[0.2em] text-gray-400">
+                      <p
+                        className={`text-xs uppercase tracking-[0.2em] ${
+                          isSelected ? "text-white/80" : "text-gray-400"
+                        }`}
+                      >
                         {comanda.name}
                       </p>
                     </div>
                     {stats.active ? (
-                      <span className="rounded-full bg-primary px-2 py-1 text-[11px] font-semibold text-white">
+                      <span
+                        className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                          isSelected
+                            ? "bg-white text-orange-600"
+                            : "bg-primary text-white"
+                        }`}
+                      >
                         {stats.active} ativos
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-3 text-xs text-gray-500">
+                  <p
+                    className={`mt-3 text-xs ${
+                      isSelected ? "text-white/90" : "text-gray-500"
+                    }`}
+                  >
                     Em aberto: <strong>{currency(stats.pending)}</strong>
                   </p>
                 </button>
@@ -838,7 +858,10 @@ export default function AtendentePanel() {
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <button
                 type="button"
-                onClick={() => scrollToPanelSection("mesa-fechamento")}
+                onClick={() => {
+                  setShowProducts(false);
+                  scrollToPanelSection("mesa-fechamento");
+                }}
                 className="rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-secondary"
               >
                 Fechamento da comanda
