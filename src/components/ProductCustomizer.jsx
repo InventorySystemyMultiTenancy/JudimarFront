@@ -124,12 +124,16 @@ function ProductCustomizer({ product, addonsOptions = DEFAULT_ADDONS, removalOpt
                     onClick={() => setPriceVariant(variant.id)}
                     className={`rounded-lg border px-3 py-2.5 text-left transition-all ${
                       selected
-                        ? "border-secondary/60 bg-secondary/5 text-primary"
+                        ? "border-orange-600 bg-orange-500 text-white shadow-sm"
                         : "border-border-soft bg-accent/40 text-text-muted hover:border-secondary/30"
                     }`}
                   >
                     <span className="block text-sm font-bold">{variant.label}</span>
-                    <span className="text-sm font-semibold text-secondary">
+                    <span
+                      className={`text-sm font-semibold ${
+                        selected ? "text-white" : "text-secondary"
+                      }`}
+                    >
                       {currency(price)}
                     </span>
                   </button>
