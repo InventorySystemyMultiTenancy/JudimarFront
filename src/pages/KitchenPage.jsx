@@ -116,6 +116,39 @@ const formatTime = (iso) =>
     minute: "2-digit",
   });
 
+function getKitchenOrderTitle(order, t) {
+  if (order.mesa) {
+    return order.mesa.name ?? `Mesa ${order.mesa.number ?? ""}`.trim();
+  }
+
+  if (order.comanda) {
+    const number = order.comanda.number ? `Comanda ${order.comanda.number}` : "Comanda";
+    return order.comanda.name ? `${number} - ${order.comanda.name}` : number;
+  }
+
+  if (order.isPickup) {
+    return t("KITCHEN_PICKUP", "Retirada");
+  }
+
+  return order.user?.name ?? t("CLIENT_DASHBOARD_CLIENT", "Cliente");
+}
+
+function getKitchenOrderSubtitle(order, t) {
+  if (order.mesa) {
+    return order.mesa.number ? `Mesa ${order.mesa.number}` : "Mesa";
+  }
+
+  if (order.comanda) {
+    return order.comanda.number ? `Comanda ${order.comanda.number}` : "Comanda";
+  }
+
+  if (order.isPickup) {
+    return order.user?.name ?? t("CLIENT_DASHBOARD_CLIENT", "Cliente");
+  }
+
+  return order.deliveryAddress ?? t("KITCHEN_DELIVERY", "Entrega");
+}
+
 function getKitchenItems(order) {
   return (order.items ?? []).filter((item) => !item.product?.waiterOnly);
 }
@@ -245,18 +278,14 @@ function OrderCard({
               largeMode ? "text-2xl" : "text-lg"
             }`}
           >
-            #{order.id.slice(-6).toUpperCase()}
+            {getKitchenOrderTitle(order, t)}
           </p>
           <p
             className={`mt-1 font-black text-gray-950 ${
               largeMode ? "text-lg" : "text-base"
             }`}
           >
-            {order.mesa
-              ? order.mesa.name
-              : order.comanda
-                ? `Comanda ${order.comanda.number}`
-              : (order.user?.name ?? t("CLIENT_DASHBOARD_CLIENT", "Cliente"))}
+            {getKitchenOrderSubtitle(order, t)}
           </p>
           <p
             className={`font-bold text-gray-700 ${
