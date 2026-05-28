@@ -942,7 +942,7 @@ export default function AtendentePanel() {
                     <button
                       type="button"
                       onClick={() => setSelectedCategory("")}
-                      className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                      className={`rounded-full px-4 py-2 text-sm font-semibold transition sm:px-3 sm:py-1 sm:text-xs ${
                         selectedCategory === ""
                           ? "bg-primary text-white"
                           : "bg-secondary/10 text-secondary hover:bg-secondary/20"
@@ -957,7 +957,7 @@ export default function AtendentePanel() {
                         onClick={() =>
                           setSelectedCategory((prev) => (prev === cat ? "" : cat))
                         }
-                        className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                        className={`rounded-full px-4 py-2 text-sm font-semibold transition sm:px-3 sm:py-1 sm:text-xs ${
                           selectedCategory === cat
                             ? "bg-primary text-white"
                             : "bg-secondary/10 text-secondary hover:bg-secondary/20"
