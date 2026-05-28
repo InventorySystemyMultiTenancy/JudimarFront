@@ -704,6 +704,76 @@ export default function AtendentePanel() {
           )}
         </section>
 
+        <section
+          id="mesa-prontos"
+          className="scroll-mt-6 rounded-3xl border border-green-200 bg-white p-5 shadow-sm"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-display text-xl text-primary">
+                Pedidos prontos
+              </h2>
+              <p className="mt-1 text-xs text-gray-500">
+                Todos os pedidos liberados para levar até a mesa ou comanda.
+              </p>
+            </div>
+            <span className="rounded-2xl bg-green-100 px-3 py-2 text-xs font-semibold text-green-700">
+              {readyOrders.length} pronto(s)
+            </span>
+          </div>
+
+          {readyOrders.length === 0 ? (
+            <div className="mt-4 rounded-2xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+              Nenhum pedido pronto no momento.
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {readyOrders.map((order) => (
+                <article
+                  key={`ready-${order.id}`}
+                  className="rounded-2xl border border-green-200 bg-green-50/40 p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-display text-lg text-primary">
+                        Pedido #{order.id.slice(-6).toUpperCase()}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {getOrderOriginLabel(order)} •{" "}
+                        {formatRelativeTime(order.createdAt)}
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-full px-2 py-1 text-[11px] font-semibold ${STATUS_COLOR[order.status] ?? "bg-gray-100 text-gray-500"}`}
+                    >
+                      {STATUS_LABEL[order.status] ?? order.status}
+                    </span>
+                  </div>
+
+                  <ul className="mt-3 space-y-1 text-xs text-gray-600">
+                    {(order.items ?? []).map((item) => (
+                      <li key={item.id}>
+                        <OrderItemName item={item} />
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="mt-4 flex justify-end border-t border-green-100 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => handleMarkDelivered(order)}
+                      disabled={advanceMutation.isPending}
+                      className="rounded-xl bg-green-600 px-4 py-2 text-xs font-black uppercase text-white transition hover:bg-green-700 disabled:opacity-50"
+                    >
+                      Entregue a mesa
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
         <section>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
@@ -995,76 +1065,6 @@ export default function AtendentePanel() {
                 >
                   Mostrar produtos para montar o pedido
                 </button>
-              )}
-            </section>
-
-            <section
-              id="mesa-prontos"
-              className="scroll-mt-6 rounded-3xl border border-green-200 bg-white p-5 shadow-sm"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="font-display text-xl text-primary">
-                    Pedidos prontos
-                  </h2>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Todos os pedidos liberados para levar até a mesa ou comanda.
-                  </p>
-                </div>
-                <span className="rounded-2xl bg-green-100 px-3 py-2 text-xs font-semibold text-green-700">
-                  {readyOrders.length} pronto(s)
-                </span>
-              </div>
-
-              {readyOrders.length === 0 ? (
-                <div className="mt-4 rounded-2xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
-                  Nenhum pedido pronto no momento.
-                </div>
-              ) : (
-                <div className="mt-4 space-y-3">
-                  {readyOrders.map((order) => (
-                    <article
-                      key={`ready-${order.id}`}
-                      className="rounded-2xl border border-green-200 bg-green-50/40 p-4"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="font-display text-lg text-primary">
-                            Pedido #{order.id.slice(-6).toUpperCase()}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {getOrderOriginLabel(order)} •{" "}
-                            {formatRelativeTime(order.createdAt)}
-                          </p>
-                        </div>
-                        <span
-                          className={`rounded-full px-2 py-1 text-[11px] font-semibold ${STATUS_COLOR[order.status] ?? "bg-gray-100 text-gray-500"}`}
-                        >
-                          {STATUS_LABEL[order.status] ?? order.status}
-                        </span>
-                      </div>
-
-                      <ul className="mt-3 space-y-1 text-xs text-gray-600">
-                        {(order.items ?? []).map((item) => (
-                          <li key={item.id}>
-                            <OrderItemName item={item} />
-                          </li>
-                        ))}
-                      </ul>
-
-                      <div className="mt-4 flex justify-end border-t border-green-100 pt-3">
-                        <button
-                          type="button"
-                          onClick={() => handleMarkDelivered(order)}
-                          disabled={advanceMutation.isPending}
-                          className="rounded-xl bg-green-600 px-4 py-2 text-xs font-black uppercase text-white transition hover:bg-green-700 disabled:opacity-50"
-                        >
-                          Entregue a mesa
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
               )}
             </section>
 
