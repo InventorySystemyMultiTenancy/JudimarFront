@@ -514,7 +514,7 @@ export default function CaixaPage() {
             value={comandaSearch}
             onChange={(event) => setComandaSearch(event.target.value)}
             placeholder="Pesquisar comanda por nome ou número"
-            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm outline-none transition placeholder:text-gray-400 focus:border-gold/60"
+            className="w-full rounded-2xl border-2 border-orange-300 bg-orange-50 px-5 py-5 text-base font-black text-gray-900 shadow-sm outline-none transition placeholder:text-orange-700/60 focus:border-orange-600 focus:bg-white focus:ring-4 focus:ring-orange-200"
           />
           <div className="flex flex-wrap gap-2">
             {filters.map((filter) => (
