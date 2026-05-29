@@ -163,7 +163,9 @@ function ProductCustomizer({ product, addonsOptions = DEFAULT_ADDONS, removalOpt
                         : "border-border-soft bg-accent/40 text-text-muted hover:border-secondary/30"
                     }`}
                   >
-                    <span className="text-sm font-medium">{addon.nome}</span>
+                    <span className="text-sm font-medium">
+                      {addon.nome || addon.name}
+                    </span>
                     <span className="text-sm font-semibold text-secondary">+ {currency(addon.price)}</span>
                   </button>
                 );

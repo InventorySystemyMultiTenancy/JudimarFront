@@ -13,6 +13,7 @@ const emptyForm = () => ({
   category: "",
   availableDays: [],
   waiterOnly: false,
+  isAddon: false,
   hasPriceVariants: false,
   commercialPrice: "",
   pratoFeitoPrice: "",
@@ -125,6 +126,7 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
         ? product.availableDays
         : [],
       waiterOnly: Boolean(product.waiterOnly),
+      isAddon: Boolean(product.isAddon),
       hasPriceVariants: Boolean(product.hasPriceVariants),
       commercialPrice:
         product.commercialPrice != null ? String(product.commercialPrice) : "",
@@ -177,7 +179,7 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
     const errs = {};
     if (!form.name.trim()) errs.name = "Nome obrigatório";
     if (
-      !form.hasPriceVariants &&
+      (!form.hasPriceVariants || form.isAddon) &&
       (form.singlePrice === "" ||
         isNaN(Number(form.singlePrice)) ||
         Number(form.singlePrice) <= 0)
@@ -190,7 +192,7 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
     ) {
       errs.singleCostPrice = "Custo inválido";
     }
-    if (form.hasPriceVariants) {
+    if (form.hasPriceVariants && !form.isAddon) {
       if (
         form.commercialPrice === "" ||
         isNaN(Number(form.commercialPrice)) ||
@@ -238,15 +240,17 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
   const onSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
+    const hasPriceVariants = form.hasPriceVariants && !form.isAddon;
     const payload = {
       name: form.name.trim(),
       description: form.description.trim() || undefined,
       imageUrl: form.imageUrl.trim() || undefined,
-      category: form.category.trim() || undefined,
+      category: form.isAddon ? "Adicional" : form.category.trim() || undefined,
       availableDays: form.availableDays,
       waiterOnly: form.waiterOnly,
-      hasPriceVariants: form.hasPriceVariants,
-      ...(form.hasPriceVariants
+      isAddon: form.isAddon,
+      hasPriceVariants,
+      ...(hasPriceVariants
         ? {
             commercialPrice: Number(form.commercialPrice),
             pratoFeitoPrice: Number(form.pratoFeitoPrice),
@@ -264,11 +268,11 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
         {
           size: "GRANDE",
           price: Number(
-            form.hasPriceVariants ? form.commercialPrice : form.singlePrice,
+            hasPriceVariants ? form.commercialPrice : form.singlePrice,
           ),
           ...(form.singleCostPrice !== ""
             ? { costPrice: Number(form.singleCostPrice) }
-            : form.hasPriceVariants && form.commercialCostPrice !== ""
+            : hasPriceVariants && form.commercialCostPrice !== ""
               ? { costPrice: Number(form.commercialCostPrice) }
             : {}),
         },
@@ -406,6 +410,33 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
             </span>
           </label>
 
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-gray-900">
+            <input
+              type="checkbox"
+              checked={form.isAddon}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  isAddon: e.target.checked,
+                  category: e.target.checked ? "Adicional" : prev.category,
+                  hasPriceVariants: e.target.checked
+                    ? false
+                    : prev.hasPriceVariants,
+                }))
+              }
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-300"
+            />
+            <span>
+              <span className="block text-xs font-semibold uppercase tracking-widest text-orange-700">
+                Adicional
+              </span>
+              <span className="mt-1 block text-xs text-orange-700/80">
+                Marque para aparecer como extra dentro dos pratos, somando no
+                valor e indo para a cozinha.
+              </span>
+            </span>
+          </label>
+
           {/* Image URL */}
           <div>
             <label className="mb-1 block text-xs uppercase tracking-widest text-smoke">
@@ -436,6 +467,7 @@ function ProductModal({ product, onClose, existingCategories = [] }) {
             <input
               type="checkbox"
               checked={form.hasPriceVariants}
+              disabled={form.isAddon}
               onChange={(e) =>
                 setForm((prev) => ({
                   ...prev,
@@ -864,6 +896,11 @@ function ProductCard({ product, onEdit }) {
         {product.waiterOnly ? (
           <span className="rounded-xl bg-cyan-100 px-2 py-0.5 text-xs font-semibold text-cyan-700">
             Somente garcom
+          </span>
+        ) : null}
+        {product.isAddon ? (
+          <span className="rounded-xl bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+            Adicional
           </span>
         ) : null}
       </div>

@@ -48,7 +48,7 @@ function parseAcompanhamentos(description) {
   return { main: description, acomp: null };
 }
 
-function MenuCard({ product, featured }) {
+function MenuCard({ product, addonProducts = [], featured }) {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const { t } = useTranslation();
   const productName = tProductField(t, product.id, "NAME", product.name);
@@ -128,7 +128,7 @@ function MenuCard({ product, featured }) {
           <div className="relative z-10 w-full max-w-sm">
             <ProductCustomizer
               product={product}
-              addonsOptions={product.addons ?? []}
+              addonsOptions={[...(product.addons ?? []), ...addonProducts]}
               onClose={() => setShowCustomizer(false)}
             />
           </div>
@@ -208,8 +208,17 @@ function CardapioPage() {
     return t(key, cat ?? "Geral");
   };
 
+  const menuProducts = products.filter((product) => !product.isAddon);
+  const addonProducts = products
+    .filter((product) => product.isAddon)
+    .map((product) => ({
+      ...product,
+      nome: product.name,
+      price: product.price ?? product.basePrice ?? product.sizes?.[0]?.price ?? 0,
+    }));
+
   const rawCategories = Array.from(
-    new Set(products.map((p) => p.category ?? "Geral").filter(Boolean)),
+    new Set(menuProducts.map((p) => p.category ?? "Geral").filter(Boolean)),
   ).sort((a, b) => {
     const ai = CATEGORY_ORDER.findIndex((k) => a.toLowerCase().includes(k));
     const bi = CATEGORY_ORDER.findIndex((k) => b.toLowerCase().includes(k));
@@ -283,8 +292,8 @@ function CardapioPage() {
 
   const filtered =
     activeCategory === ALL_LABEL || activeCategory === "Todos"
-      ? products
-      : products.filter((p) =>
+      ? menuProducts
+      : menuProducts.filter((p) =>
           (categoryGroups[activeCategory] ?? [activeCategory]).includes(
             p.category ?? "Geral",
           ),
@@ -298,7 +307,7 @@ function CardapioPage() {
       )
     : filtered;
 
-  const dailyProducts = products.filter(
+  const dailyProducts = menuProducts.filter(
     (product) =>
       Array.isArray(product.availableDays) && product.availableDays.length > 0,
   );
@@ -400,6 +409,7 @@ function CardapioPage() {
                   <MenuCard
                     key={`daily-${product.id}`}
                     product={product}
+                    addonProducts={addonProducts}
                     featured={topIds.has(product.id)}
                   />
                 ))}
@@ -430,6 +440,7 @@ function CardapioPage() {
                   <MenuCard
                     key={`top-${product.id}`}
                     product={product}
+                    addonProducts={addonProducts}
                     featured
                   />
                 ))}
@@ -478,6 +489,7 @@ function CardapioPage() {
               <MenuCard
                 key={product.id}
                 product={product}
+                addonProducts={addonProducts}
                 featured={topIds.has(product.id)}
               />
             ))}

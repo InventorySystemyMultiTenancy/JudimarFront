@@ -71,6 +71,7 @@ const mapItemToApi = (item) => {
 
 function AttendantProductCard({
   product,
+  addonProducts = [],
   featured = false,
   showPhoto = false,
 }) {
@@ -138,7 +139,7 @@ function AttendantProductCard({
           <div className="relative z-10 w-full max-w-sm">
             <ProductCustomizer
               product={product}
-              addonsOptions={product.addons ?? []}
+              addonsOptions={[...(product.addons ?? []), ...addonProducts]}
               onClose={() => setShowCustomizer(false)}
             />
           </div>
@@ -331,7 +332,7 @@ export default function AtendentePanel() {
   const categories = useMemo(() => {
     const seen = new Set();
     const result = [];
-    for (const p of products) {
+    for (const p of products.filter((product) => !product.isAddon)) {
       const cat = p.category ?? "";
       if (cat && !seen.has(cat)) {
         seen.add(cat);
@@ -341,9 +342,23 @@ export default function AtendentePanel() {
     return result;
   }, [products]);
 
+  const addonProducts = useMemo(
+    () =>
+      products
+        .filter((product) => product.isAddon)
+        .map((product) => ({
+          ...product,
+          nome: product.name,
+          price:
+            product.price ?? product.basePrice ?? product.sizes?.[0]?.price ?? 0,
+        })),
+    [products],
+  );
+
   const filteredProducts = useMemo(() => {
     const normalized = search.trim().toLowerCase();
     return products.filter((product) => {
+      if (product.isAddon) return false;
       if (selectedCategory && product.category !== selectedCategory)
         return false;
       if (!normalized) return true;
@@ -1144,6 +1159,7 @@ export default function AtendentePanel() {
                         <AttendantProductCard
                           key={product.id}
                           product={product}
+                          addonProducts={addonProducts}
                           featured={topProducts.some(
                             (entry) => entry.id === product.id,
                           )}

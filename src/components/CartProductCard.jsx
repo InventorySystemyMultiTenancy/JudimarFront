@@ -31,7 +31,7 @@ function CartProductCard({
         <div className="mt-1.5 space-y-1">
           {item.addons.map((addon) => (
             <p key={addon.id || addon.nome} className="text-xs text-amber-300">
-              + {addon.nome} ({currency(addon.price)})
+              + {addon.nome || addon.name} ({currency(addon.price)})
             </p>
           ))}
         </div>
