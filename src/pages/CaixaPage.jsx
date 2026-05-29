@@ -75,13 +75,27 @@ function formatTime(value) {
   });
 }
 
+function decorateOrderItems(order) {
+  return (order.items ?? []).map((item) => ({
+    ...item,
+    id: `${order.id}-${item.id}`,
+    originalItemId: item.id,
+    sourceOrderId: order.id,
+  }));
+}
+
 function groupPendingOrdersByComanda(orders) {
   const grouped = new Map();
   const result = [];
 
   for (const order of orders) {
     if (!order.comanda?.id) {
-      result.push({ ...order, orderIds: [order.id], orders: [order] });
+      result.push({
+        ...order,
+        orderIds: [order.id],
+        orders: [order],
+        items: decorateOrderItems(order),
+      });
       continue;
     }
 
@@ -92,12 +106,7 @@ function groupPendingOrdersByComanda(orders) {
       current.orders.push(order);
       current.orderIds.push(order.id);
       current.total += Number(order.total ?? 0);
-      current.items.push(
-        ...(order.items ?? []).map((item) => ({
-          ...item,
-          id: `${order.id}-${item.id}`,
-        })),
-      );
+      current.items.push(...decorateOrderItems(order));
       if (new Date(order.createdAt) < new Date(current.createdAt)) {
         current.createdAt = order.createdAt;
       }
@@ -111,10 +120,7 @@ function groupPendingOrdersByComanda(orders) {
       orderIds: [order.id],
       orders: [order],
       total: Number(order.total ?? 0),
-      items: (order.items ?? []).map((item) => ({
-        ...item,
-        id: `${order.id}-${item.id}`,
-      })),
+      items: decorateOrderItems(order),
     };
 
     grouped.set(key, groupedOrder);
@@ -124,9 +130,24 @@ function groupPendingOrdersByComanda(orders) {
   return result;
 }
 
-function PendingOrderCard({ order, onPay, disabled }) {
+function PendingOrderCard({
+  order,
+  products,
+  editingTotals,
+  editingTotal,
+  onPay,
+  onTotalChange,
+  onOrderTotalChange,
+  onUpdateTotal,
+  onUpdateOrderTotal,
+  onUpdateItem,
+  disabled,
+  updatingTotal,
+  updatingItem,
+}) {
   const origin = getOrigin(order);
   const orderCount = order.orderIds?.length ?? 1;
+  const canEditTotal = orderCount === 1;
 
   return (
     <article className="rounded-3xl border border-gold/20 bg-white p-5 shadow-sm">
@@ -168,14 +189,45 @@ function PendingOrderCard({ order, onPay, disabled }) {
         {(order.items ?? []).map((item) => (
           <li
             key={item.id}
-            className="flex items-center justify-between gap-3 rounded-2xl bg-accent/60 px-4 py-3"
+            className="rounded-2xl bg-accent/60 px-4 py-3"
           >
-            <span className="text-base font-bold text-gray-900">
-              {item.quantity}x {item.product?.name ?? item.productName ?? "Item"}
-            </span>
-            <span className="text-sm font-black text-primary">
-              {currency(item.totalPrice)}
-            </span>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <span className="text-base font-bold text-gray-900">
+                  {item.quantity}x{" "}
+                  {item.product?.name ?? item.productName ?? "Item"}
+                </span>
+                {orderCount > 1 ? (
+                  <p className="mt-1 text-xs font-bold uppercase text-gray-500">
+                    Pedido #{item.sourceOrderId?.slice(-6).toUpperCase()}
+                  </p>
+                ) : null}
+              </div>
+              <span className="text-sm font-black text-primary">
+                {currency(item.totalPrice)}
+              </span>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <select
+                value={item.productId ?? ""}
+                onChange={(event) =>
+                  onUpdateItem({
+                    orderId: item.sourceOrderId,
+                    itemId: item.originalItemId,
+                    productId: event.target.value,
+                  })
+                }
+                disabled={disabled || updatingItem}
+                className="min-w-[220px] flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-700 outline-none transition focus:border-gold/60 disabled:opacity-60"
+              >
+                <option value="">Trocar produto</option>
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </li>
         ))}
       </ul>
@@ -185,6 +237,78 @@ function PendingOrderCard({ order, onPay, disabled }) {
           Obs: {order.notes}
         </p>
       ) : null}
+
+      <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-3">
+        {canEditTotal ? (
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="min-w-[160px] flex-1">
+              <span className="text-xs font-black uppercase tracking-widest text-gray-500">
+                Editar valor
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={editingTotal}
+                onChange={(event) => onTotalChange(order, event.target.value)}
+                className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm font-black text-gray-800 outline-none transition focus:border-gold/60"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => onUpdateTotal(order)}
+              disabled={disabled || updatingTotal}
+              className="rounded-xl bg-orange-600 px-4 py-3 text-sm font-black uppercase text-white transition hover:bg-orange-700 disabled:opacity-50"
+            >
+              Alterar valor
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs font-black uppercase tracking-widest text-gray-500">
+              Editar valores dos pedidos
+            </p>
+            {order.orders.map((groupedOrder) => {
+              const groupedOrderTotal =
+                editingTotals[groupedOrder.id] ??
+                Number(groupedOrder.total ?? 0).toFixed(2);
+
+              return (
+                <div
+                  key={groupedOrder.id}
+                  className="flex flex-wrap items-end gap-2"
+                >
+                  <label className="min-w-[160px] flex-1">
+                    <span className="text-xs font-bold uppercase text-gray-500">
+                      Pedido #{groupedOrder.id.slice(-6).toUpperCase()}
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={groupedOrderTotal}
+                      onChange={(event) =>
+                        onOrderTotalChange(groupedOrder.id, event.target.value)
+                      }
+                      className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm font-black text-gray-800 outline-none transition focus:border-gold/60"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onUpdateOrderTotal(groupedOrder.id, groupedOrderTotal)
+                    }
+                    disabled={disabled || updatingTotal}
+                    className="rounded-xl bg-orange-600 px-4 py-3 text-sm font-black uppercase text-white transition hover:bg-orange-700 disabled:opacity-50"
+                  >
+                    Alterar
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       <button
         type="button"
@@ -202,6 +326,7 @@ export default function CaixaPage() {
   const queryClient = useQueryClient();
   const [originFilter, setOriginFilter] = useState("TODOS");
   const [comandaSearch, setComandaSearch] = useState("");
+  const [editingTotals, setEditingTotals] = useState({});
 
   const { data: orders = [], isLoading, isError } = useQuery({
     queryKey: ["caixa-pending-payments"],
@@ -209,6 +334,19 @@ export default function CaixaPage() {
       (await api.get("/orders/pending-payments")).data?.data ?? [],
     refetchInterval: 20_000,
   });
+
+  const { data: products = [] } = useQuery({
+    queryKey: ["caixa-products"],
+    queryFn: async () => (await api.get("/products")).data?.data ?? [],
+  });
+
+  const invalidatePaymentViews = () => {
+    queryClient.invalidateQueries({ queryKey: ["caixa-pending-payments"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-orders-preview"] });
+    queryClient.invalidateQueries({ queryKey: ["comandas-open-totals"] });
+    queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
+    queryClient.invalidateQueries({ queryKey: ["atendente-comanda-orders"] });
+  };
 
   const markPaid = useMutation({
     mutationFn: async ({ orderIds, paymentMethod }) =>
@@ -218,14 +356,43 @@ export default function CaixaPage() {
         ),
       ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["caixa-pending-payments"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-orders-preview"] });
-      queryClient.invalidateQueries({ queryKey: ["comandas-open-totals"] });
+      invalidatePaymentViews();
       toast.success("Pagamento baixado.");
     },
     onError: (error) =>
       toast.error(
         error?.response?.data?.error?.message ?? "Erro ao baixar pagamento.",
+      ),
+  });
+
+  const updateTotal = useMutation({
+    mutationFn: ({ orderId, total }) =>
+      api.patch(`/orders/${orderId}/total`, { total }),
+    onSuccess: (_response, variables) => {
+      setEditingTotals((current) => {
+        const next = { ...current };
+        delete next[variables.orderId];
+        return next;
+      });
+      invalidatePaymentViews();
+      toast.success("Valor atualizado.");
+    },
+    onError: (error) =>
+      toast.error(
+        error?.response?.data?.error?.message ?? "Erro ao alterar valor.",
+      ),
+  });
+
+  const updateItem = useMutation({
+    mutationFn: ({ orderId, itemId, productId }) =>
+      api.patch(`/orders/${orderId}/items/${itemId}`, { productId }),
+    onSuccess: () => {
+      invalidatePaymentViews();
+      toast.success("Produto alterado.");
+    },
+    onError: (error) =>
+      toast.error(
+        error?.response?.data?.error?.message ?? "Erro ao trocar produto.",
       ),
   });
 
@@ -265,6 +432,48 @@ export default function CaixaPage() {
     if (paymentMethod) {
       markPaid.mutate({ orderIds: order.orderIds ?? [order.id], paymentMethod });
     }
+  };
+
+  const handleTotalChange = (order, value) => {
+    const orderId = order.orderIds?.[0] ?? order.id;
+    setEditingTotals((current) => ({ ...current, [orderId]: value }));
+  };
+
+  const handleOrderTotalChange = (orderId, value) => {
+    setEditingTotals((current) => ({ ...current, [orderId]: value }));
+  };
+
+  const getEditingTotal = (order) => {
+    const orderId = order.orderIds?.[0] ?? order.id;
+    return editingTotals[orderId] ?? Number(order.total ?? 0).toFixed(2);
+  };
+
+  const handleUpdateTotal = (order) => {
+    const orderId = order.orderIds?.[0] ?? order.id;
+    const total = Number(String(getEditingTotal(order)).replace(",", "."));
+
+    if (!Number.isFinite(total) || total < 0) {
+      toast.error("Informe um valor valido.");
+      return;
+    }
+
+    updateTotal.mutate({ orderId, total });
+  };
+
+  const handleUpdateOrderTotal = (orderId, value) => {
+    const total = Number(String(value).replace(",", "."));
+
+    if (!Number.isFinite(total) || total < 0) {
+      toast.error("Informe um valor valido.");
+      return;
+    }
+
+    updateTotal.mutate({ orderId, total });
+  };
+
+  const handleUpdateItem = ({ orderId, itemId, productId }) => {
+    if (!orderId || !itemId || !productId) return;
+    updateItem.mutate({ orderId, itemId, productId });
   };
 
   const filters = ["TODOS", "Mesa", "Comanda", "Entrega", "Retirada", "Pedido"];
@@ -364,8 +573,20 @@ export default function CaixaPage() {
               <PendingOrderCard
                 key={order.id}
                 order={order}
+                products={products}
+                editingTotals={editingTotals}
+                editingTotal={getEditingTotal(order)}
                 onPay={handlePay}
-                disabled={markPaid.isPending}
+                onTotalChange={handleTotalChange}
+                onOrderTotalChange={handleOrderTotalChange}
+                onUpdateTotal={handleUpdateTotal}
+                onUpdateOrderTotal={handleUpdateOrderTotal}
+                onUpdateItem={handleUpdateItem}
+                disabled={
+                  markPaid.isPending || updateTotal.isPending || updateItem.isPending
+                }
+                updatingTotal={updateTotal.isPending}
+                updatingItem={updateItem.isPending}
               />
             ))}
           </section>
