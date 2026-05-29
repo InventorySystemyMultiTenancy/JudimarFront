@@ -985,14 +985,14 @@ export default function AtendentePanel() {
                               isSelected ? "text-white" : "text-primary"
                             }`}
                           >
-                            Comanda {comanda.number}
+                            {comanda.name || `Comanda ${comanda.number}`}
                           </p>
                           <p
                             className={`text-xs uppercase tracking-[0.2em] ${
                               isSelected ? "text-white/80" : "text-gray-400"
                             }`}
                           >
-                            {comanda.name}
+                            Comanda {comanda.number}
                           </p>
                         </div>
                         {stats.active ? (

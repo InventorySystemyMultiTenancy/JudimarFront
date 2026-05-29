@@ -1,5 +1,6 @@
 let audioContext = null;
-let kitchenAudioPrimed = false;
+let orderAudioPrimed = false;
+const audioCache = new Map();
 
 const KITCHEN_ORDER_AUDIO_URL = `${import.meta.env.BASE_URL}audio/cozinha.mpeg`;
 const CASH_ORDER_AUDIO_URL = `${import.meta.env.BASE_URL}audio/dinheiro.mpeg`;
@@ -73,26 +74,50 @@ export function playKitchenAlertTone(tone = "new-order") {
   }
 }
 
-export function primeKitchenOrderAudio() {
-  if (kitchenAudioPrimed || typeof Audio === "undefined") {
+function getAudio(audioUrl) {
+  if (typeof Audio === "undefined") {
+    return null;
+  }
+
+  if (!audioCache.has(audioUrl)) {
+    const audio = new Audio(audioUrl);
+    audio.preload = "auto";
+    audio.playsInline = true;
+    audioCache.set(audioUrl, audio);
+  }
+
+  return audioCache.get(audioUrl);
+}
+
+function primeAudio(audioUrl) {
+  const audio = getAudio(audioUrl);
+  if (!audio) {
     return;
   }
 
-  try {
-    const audio = new Audio(KITCHEN_ORDER_AUDIO_URL);
-    audio.preload = "auto";
-    audio.muted = true;
+  audio.muted = true;
+  audio.volume = 0;
 
-    const playPromise = audio.play();
-    if (playPromise?.then) {
-      playPromise
-        .then(() => {
-          audio.pause();
-          audio.currentTime = 0;
-          kitchenAudioPrimed = true;
-        })
-        .catch(() => {});
-    }
+  const playPromise = audio.play();
+  if (playPromise?.then) {
+    playPromise
+      .then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.muted = false;
+        audio.volume = 1;
+      })
+      .catch(() => {});
+  }
+}
+
+export function primeKitchenOrderAudio() {
+  if (orderAudioPrimed) return;
+
+  try {
+    primeAudio(KITCHEN_ORDER_AUDIO_URL);
+    primeAudio(CASH_ORDER_AUDIO_URL);
+    orderAudioPrimed = true;
   } catch {
     // Browser audio policies can block priming; the real play call has fallback.
   }
@@ -105,10 +130,14 @@ export function installKitchenOrderAudioUnlock() {
 
   const unlock = () => primeKitchenOrderAudio();
   window.addEventListener("pointerdown", unlock, { once: true });
+  window.addEventListener("touchstart", unlock, { once: true });
+  window.addEventListener("click", unlock, { once: true });
   window.addEventListener("keydown", unlock, { once: true });
 
   return () => {
     window.removeEventListener("pointerdown", unlock);
+    window.removeEventListener("touchstart", unlock);
+    window.removeEventListener("click", unlock);
     window.removeEventListener("keydown", unlock);
   };
 }
@@ -123,13 +152,16 @@ export function playCashOrderAudio() {
 
 function playAudioFile(audioUrl, fallbackTone = "new-order") {
   try {
-    if (typeof Audio === "undefined") {
+    const audio = getAudio(audioUrl);
+
+    if (!audio) {
       playKitchenAlertTone(fallbackTone);
       return;
     }
 
-    const audio = new Audio(audioUrl);
-    audio.preload = "auto";
+    audio.pause();
+    audio.currentTime = 0;
+    audio.muted = false;
     audio.volume = 1;
 
     const playPromise = audio.play();
