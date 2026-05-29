@@ -85,7 +85,6 @@ function decorateOrderItems(order) {
     id: `${order.id}-${item.id}`,
     originalItemId: item.id,
     sourceOrderId: order.id,
-    sourceOrderTotal: order.total,
   }));
 }
 
@@ -207,67 +206,9 @@ function PendingOrderCard({
                   </p>
                 ) : null}
               </div>
-              {activeTotalEditorId === item.sourceOrderId ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    autoFocus
-                    value={
-                      editingTotals[item.sourceOrderId] ??
-                      Number(item.sourceOrderTotal ?? item.totalPrice ?? 0).toFixed(2)
-                    }
-                    onChange={(event) =>
-                      onOrderTotalChange(item.sourceOrderId, event.target.value)
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        onUpdateOrderTotal(
-                          item.sourceOrderId,
-                          editingTotals[item.sourceOrderId] ??
-                            Number(item.sourceOrderTotal ?? item.totalPrice ?? 0).toFixed(2),
-                        );
-                        onStopTotalEdit();
-                      }
-                      if (event.key === "Escape") {
-                        onStopTotalEdit();
-                      }
-                    }}
-                    className="w-24 rounded-xl border border-orange-300 bg-white px-3 py-2 text-right text-sm font-black text-gray-900 outline-none focus:border-orange-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onUpdateOrderTotal(
-                        item.sourceOrderId,
-                        editingTotals[item.sourceOrderId] ??
-                          Number(item.sourceOrderTotal ?? item.totalPrice ?? 0).toFixed(2),
-                      );
-                      onStopTotalEdit();
-                    }}
-                    disabled={disabled || updatingTotal}
-                    className="rounded-xl bg-orange-600 px-3 py-2 text-xs font-black uppercase text-white transition hover:bg-orange-700 disabled:opacity-50"
-                  >
-                    OK
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() =>
-                    onStartTotalEdit(
-                      item.sourceOrderId,
-                      Number(item.sourceOrderTotal ?? item.totalPrice ?? 0).toFixed(2),
-                    )
-                  }
-                  disabled={disabled || updatingTotal}
-                  className="rounded-xl px-2 py-1 text-sm font-black text-primary transition hover:bg-orange-100 hover:text-orange-700 disabled:opacity-50"
-                  title="Clique para alterar o valor"
-                >
-                  {currency(item.sourceOrderTotal ?? item.totalPrice)}
-                </button>
-              )}
+              <span className="text-sm font-black text-primary">
+                {currency(item.totalPrice)}
+              </span>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <select
@@ -299,6 +240,59 @@ function PendingOrderCard({
           Obs: {order.notes}
         </p>
       ) : null}
+
+      <div className="mt-5 flex justify-end">
+        {activeTotalEditorId === order.id ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              autoFocus
+              value={editingTotals[order.id] ?? Number(order.total ?? 0).toFixed(2)}
+              onChange={(event) => onOrderTotalChange(order.id, event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  onUpdateOrderTotal(
+                    order.orderIds?.[0] ?? order.id,
+                    editingTotals[order.id] ?? Number(order.total ?? 0).toFixed(2),
+                  );
+                  onStopTotalEdit();
+                }
+                if (event.key === "Escape") {
+                  onStopTotalEdit();
+                }
+              }}
+              className="w-28 rounded-xl border border-orange-300 bg-white px-3 py-2 text-right text-sm font-black text-gray-900 outline-none focus:border-orange-500"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                onUpdateOrderTotal(
+                  order.orderIds?.[0] ?? order.id,
+                  editingTotals[order.id] ?? Number(order.total ?? 0).toFixed(2),
+                );
+                onStopTotalEdit();
+              }}
+              disabled={disabled || updatingTotal || orderCount > 1}
+              className="rounded-xl bg-orange-600 px-3 py-2 text-xs font-black uppercase text-white transition hover:bg-orange-700 disabled:opacity-50"
+            >
+              OK
+            </button>
+          </div>
+        ) : orderCount === 1 ? (
+          <button
+            type="button"
+            onClick={() =>
+              onStartTotalEdit(order.id, Number(order.total ?? 0).toFixed(2))
+            }
+            disabled={disabled || updatingTotal}
+            className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-black uppercase text-orange-700 transition hover:border-orange-400 hover:bg-orange-100 disabled:opacity-50"
+          >
+            Alterar total
+          </button>
+        ) : null}
+      </div>
 
       <button
         type="button"
