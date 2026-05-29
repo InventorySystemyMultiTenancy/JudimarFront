@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import ProductCustomizer from "../components/ProductCustomizer.jsx";
@@ -38,6 +39,14 @@ const currency = (value) =>
   });
 
 const isValidEntityId = (value) => String(value || "").trim().length > 0;
+
+const createClientRequestId = () => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
 
 const mapItemToApi = (item) => {
   const payload = item.payload || {};
@@ -190,6 +199,7 @@ export default function AtendentePanel() {
     formatted,
   } = useCart();
 
+  const pendingOrderRequestIdRef = useRef(null);
   const [waiterCalls, setWaiterCalls] = useState(() => getWaiterCalls());
   const [, setRelativeTimeTick] = useState(0);
   const [selectedComandaId, setSelectedComandaId] = useState("");
@@ -201,6 +211,7 @@ export default function AtendentePanel() {
   const [showProducts, setShowProducts] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
   const [mesaNotes, setMesaNotes] = useState({});
+  const [editingOrderTotals, setEditingOrderTotals] = useState({});
 
   useEffect(() => subscribeToWaiterCalls(setWaiterCalls), []);
 
@@ -468,9 +479,12 @@ export default function AtendentePanel() {
       }
 
       const payload = {
+        clientRequestId:
+          pendingOrderRequestIdRef.current ?? createClientRequestId(),
         notes: notes.trim() || undefined,
         items: items.map(mapItemToApi).filter(Boolean),
       };
+      pendingOrderRequestIdRef.current = payload.clientRequestId;
 
       const res = await api.post(
         `/comandas/${selectedTargetId}/orders`,
@@ -479,6 +493,7 @@ export default function AtendentePanel() {
       return res.data?.data;
     },
     onSuccess: () => {
+      pendingOrderRequestIdRef.current = null;
       clearCart();
       setMesaNotes((prev) => ({ ...prev, [notesKey]: "" }));
       queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
@@ -528,6 +543,57 @@ export default function AtendentePanel() {
     },
   });
 
+  const cancelOrderMutation = useMutation({
+    mutationFn: async (orderId) => {
+      const res = await api.patch(`/orders/${orderId}/cancel`);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["atendente-comanda-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["caixa-pending-payments"] });
+      queryClient.invalidateQueries({
+        queryKey: ["atendente-comanda-open-totals"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["comandas-open-totals"] });
+      toast.success("Pedido cancelado.");
+    },
+    onError: (error) => {
+      const message =
+        error?.response?.data?.error?.message ||
+        "Não foi possível cancelar o pedido.";
+      toast.error(message);
+    },
+  });
+
+  const updateOrderTotalMutation = useMutation({
+    mutationFn: async ({ orderId, total }) => {
+      const res = await api.patch(`/orders/${orderId}/total`, { total });
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      setEditingOrderTotals((prev) => {
+        const next = { ...prev };
+        delete next[variables.orderId];
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["atendente-comanda-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["caixa-pending-payments"] });
+      queryClient.invalidateQueries({
+        queryKey: ["atendente-comanda-open-totals"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["comandas-open-totals"] });
+      toast.success("Valor atualizado.");
+    },
+    onError: (error) => {
+      const message =
+        error?.response?.data?.error?.message ||
+        "Não foi possível alterar o valor.";
+      toast.error(message);
+    },
+  });
+
   const handleMarkDelivered = useCallback(
     (order) => {
       const statuses =
@@ -552,6 +618,32 @@ export default function AtendentePanel() {
     [markPaidMutation],
   );
 
+  const handleCancelOrder = useCallback(
+    (order) => {
+      const confirmed = window.confirm(
+        `Cancelar pedido #${order.id.slice(-6).toUpperCase()}?`,
+      );
+      if (!confirmed) return;
+      cancelOrderMutation.mutate(order.id);
+    },
+    [cancelOrderMutation],
+  );
+
+  const handleUpdateOrderTotal = useCallback(
+    (order) => {
+      const rawValue = editingOrderTotals[order.id];
+      const total = Number(String(rawValue ?? "").replace(",", "."));
+
+      if (!Number.isFinite(total) || total < 0) {
+        toast.error("Informe um valor válido.");
+        return;
+      }
+
+      updateOrderTotalMutation.mutate({ orderId: order.id, total });
+    },
+    [editingOrderTotals, updateOrderTotalMutation],
+  );
+
   const handleClearCalls = useCallback(() => {
     clearWaiterCalls();
     toast.success("Chamadas limpas");
@@ -570,6 +662,10 @@ export default function AtendentePanel() {
   }, []);
 
   const handleSubmitMesaOrder = useCallback(() => {
+    if (createMesaOrderMutation.isPending) {
+      return;
+    }
+
     if (!selectedTargetId) {
       toast.error(`Selecione uma ${targetLabel}.`);
       return;
@@ -1153,14 +1249,50 @@ export default function AtendentePanel() {
                         </span>
                         <div className="flex flex-wrap gap-2">
                           {order.paymentStatus !== "APROVADO" ? (
-                            <button
-                              type="button"
-                              onClick={() => handleMarkPaid(order.id)}
-                              disabled={markPaidMutation.isPending}
-                              className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
-                            >
-                              Dar baixa / pago
-                            </button>
+                            <>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={
+                                    editingOrderTotals[order.id] ??
+                                    Number(order.total ?? 0).toFixed(2)
+                                  }
+                                  onChange={(event) =>
+                                    setEditingOrderTotals((prev) => ({
+                                      ...prev,
+                                      [order.id]: event.target.value,
+                                    }))
+                                  }
+                                  className="h-9 w-28 rounded-xl border border-gray-200 px-3 text-xs font-semibold text-primary outline-none focus:border-secondary/50"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateOrderTotal(order)}
+                                  disabled={updateOrderTotalMutation.isPending}
+                                  className="rounded-xl border border-secondary/30 bg-secondary/5 px-3 py-2 text-xs font-semibold text-secondary transition hover:bg-secondary/10 disabled:opacity-50"
+                                >
+                                  Alterar valor
+                                </button>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleMarkPaid(order.id)}
+                                disabled={markPaidMutation.isPending}
+                                className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
+                              >
+                                Dar baixa / pago
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCancelOrder(order)}
+                                disabled={cancelOrderMutation.isPending}
+                                className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+                              >
+                                Cancelar pedido
+                              </button>
+                            </>
                           ) : null}
                         </div>
                       </div>
