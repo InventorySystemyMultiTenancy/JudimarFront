@@ -94,6 +94,14 @@ function isInHouseOrder(order) {
   return !!(order?.mesaId || order?.comandaId || order?.mesa || order?.comanda);
 }
 
+function isMarmitaOrder(order) {
+  return String(order?.notes ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .includes("MARMITA");
+}
+
 function getNextStageKey(status, order) {
   if ((isInHouseOrder(order) || order?.isPickup) && status === "PREPARANDO") {
     return "SAIU_PARA_ENTREGA";
@@ -131,6 +139,9 @@ function getKitchenOrderTitle(order, t) {
   }
 
   if (order.isPickup) {
+    if (isMarmitaOrder(order)) {
+      return "MARMITA";
+    }
     return t("KITCHEN_PICKUP", "Retirada");
   }
 
@@ -345,6 +356,12 @@ function OrderCard({
       {isFresh ? (
         <div className="mt-4 inline-flex rounded-full border border-gold/40 bg-gold/10 px-4 py-2 text-sm font-black uppercase tracking-[0.18em] text-gold">
           {t("KITCHEN_NEW_ORDER", "Novo pedido")}
+        </div>
+      ) : null}
+
+      {isMarmitaOrder(order) ? (
+        <div className="mt-4 rounded-2xl border-4 border-orange-700 bg-orange-500 px-4 py-3 text-center text-3xl font-black uppercase tracking-widest text-white shadow-sm">
+          MARMITA
         </div>
       ) : null}
 

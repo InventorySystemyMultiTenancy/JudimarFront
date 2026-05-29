@@ -43,6 +43,10 @@ function LoginPage() {
       navigate("/atendente");
       return;
     }
+    if (role === "VIAGEM") {
+      navigate("/viagem");
+      return;
+    }
     if (["ADMIN", "FUNCIONARIO"].includes(role)) {
       navigate("/admin");
       return;

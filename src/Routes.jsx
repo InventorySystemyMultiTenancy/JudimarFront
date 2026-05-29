@@ -3,6 +3,7 @@ import AdminPanelPage from "./pages/AdminPanelPage.jsx";
 import AdminProductsPage from "./pages/AdminProductsPage.jsx";
 import AdminProductsHubPage from "./pages/AdminProductsHubPage.jsx";
 import AtendentePanel from "./pages/AtendentePanel.jsx";
+import ViagemPanel from "./pages/ViagemPanel.jsx";
 import AdminOrderHistoryPage from "./pages/AdminOrderHistoryPage.jsx";
 import AdminUsersPage from "./pages/AdminUsersPage.jsx";
 import AdminMesasPage from "./pages/AdminMesasPage.jsx";
@@ -93,6 +94,10 @@ function AppRoutes() {
 
       <Route element={<PrivateRoute allowedRoles={["ATENDENTE"]} />}>
         <Route path="/atendente" element={<AtendentePanel />} />
+      </Route>
+
+      <Route element={<PrivateRoute allowedRoles={["VIAGEM"]} />}>
+        <Route path="/viagem" element={<ViagemPanel />} />
       </Route>
 
       <Route element={<PrivateRoute allowedRoles={["ADMIN", "FUNCIONARIO"]} />}>
