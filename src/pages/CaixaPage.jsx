@@ -19,6 +19,7 @@ const STATUS_LABEL = {
   SAIU_PARA_ENTREGA: "Saiu p/ entrega",
   ENTREGUE: "Entregue",
   CANCELADO: "Cancelado",
+  MULTIPLOS: "Vários pedidos",
 };
 
 function getOrigin(order) {
@@ -74,8 +75,58 @@ function formatTime(value) {
   });
 }
 
+function groupPendingOrdersByComanda(orders) {
+  const grouped = new Map();
+  const result = [];
+
+  for (const order of orders) {
+    if (!order.comanda?.id) {
+      result.push({ ...order, orderIds: [order.id], orders: [order] });
+      continue;
+    }
+
+    const key = order.comanda.id;
+    const current = grouped.get(key);
+
+    if (current) {
+      current.orders.push(order);
+      current.orderIds.push(order.id);
+      current.total += Number(order.total ?? 0);
+      current.items.push(
+        ...(order.items ?? []).map((item) => ({
+          ...item,
+          id: `${order.id}-${item.id}`,
+        })),
+      );
+      if (new Date(order.createdAt) < new Date(current.createdAt)) {
+        current.createdAt = order.createdAt;
+      }
+      current.status = "MULTIPLOS";
+      continue;
+    }
+
+    const groupedOrder = {
+      ...order,
+      id: `comanda-${key}`,
+      orderIds: [order.id],
+      orders: [order],
+      total: Number(order.total ?? 0),
+      items: (order.items ?? []).map((item) => ({
+        ...item,
+        id: `${order.id}-${item.id}`,
+      })),
+    };
+
+    grouped.set(key, groupedOrder);
+    result.push(groupedOrder);
+  }
+
+  return result;
+}
+
 function PendingOrderCard({ order, onPay, disabled }) {
   const origin = getOrigin(order);
+  const orderCount = order.orderIds?.length ?? 1;
 
   return (
     <article className="rounded-3xl border border-gold/20 bg-white p-5 shadow-sm">
@@ -88,7 +139,9 @@ function PendingOrderCard({ order, onPay, disabled }) {
               {origin.type}
             </span>
             <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">
-              #{order.id.slice(-6).toUpperCase()}
+              {orderCount > 1
+                ? `${orderCount} pedidos`
+                : `#${order.orderIds?.[0]?.slice(-6).toUpperCase()}`}
             </span>
           </div>
           <h2 className="mt-3 text-2xl font-black text-primary">
@@ -158,8 +211,12 @@ export default function CaixaPage() {
   });
 
   const markPaid = useMutation({
-    mutationFn: async ({ orderId, paymentMethod }) =>
-      api.patch(`/orders/${orderId}/mark-paid`, { paymentMethod }),
+    mutationFn: async ({ orderIds, paymentMethod }) =>
+      Promise.all(
+        orderIds.map((orderId) =>
+          api.patch(`/orders/${orderId}/mark-paid`, { paymentMethod }),
+        ),
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["caixa-pending-payments"] });
       queryClient.invalidateQueries({ queryKey: ["admin-orders-preview"] });
@@ -183,7 +240,7 @@ export default function CaixaPage() {
   const filteredOrders = useMemo(() => {
     const normalizedComandaSearch = comandaSearch.trim().toLowerCase();
 
-    return orders.filter((order) => {
+    const filtered = orders.filter((order) => {
       const matchesOrigin =
         originFilter === "TODOS" || getOrigin(order).type === originFilter;
 
@@ -196,6 +253,8 @@ export default function CaixaPage() {
         `${order.comanda.name ?? ""} ${order.comanda.number ?? ""}`.toLowerCase();
       return haystack.includes(normalizedComandaSearch);
     });
+
+    return groupPendingOrdersByComanda(filtered);
   }, [comandaSearch, orders, originFilter]);
 
   const handlePay = async (order) => {
@@ -204,7 +263,7 @@ export default function CaixaPage() {
       text: `Total em aberto: ${currency(order.total)}`,
     });
     if (paymentMethod) {
-      markPaid.mutate({ orderId: order.id, paymentMethod });
+      markPaid.mutate({ orderIds: order.orderIds ?? [order.id], paymentMethod });
     }
   };
 
