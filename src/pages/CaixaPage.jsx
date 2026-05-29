@@ -1,9 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { api } from "../lib/api.js";
 import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
+import {
+  installKitchenOrderAudioUnlock,
+  playCashOrderAudio,
+} from "../lib/playKitchenAlertTone.js";
 
 const currency = (value) =>
   Number(value || 0).toLocaleString("pt-BR", {
@@ -327,6 +331,20 @@ export default function CaixaPage() {
   const [originFilter, setOriginFilter] = useState("TODOS");
   const [comandaSearch, setComandaSearch] = useState("");
   const [editingTotals, setEditingTotals] = useState({});
+
+  useEffect(() => installKitchenOrderAudioUnlock(), []);
+
+  useEffect(() => {
+    const handleOrderCreated = () => {
+      playCashOrderAudio();
+    };
+
+    window.addEventListener("pc:order-created", handleOrderCreated);
+
+    return () => {
+      window.removeEventListener("pc:order-created", handleOrderCreated);
+    };
+  }, []);
 
   const { data: orders = [], isLoading, isError } = useQuery({
     queryKey: ["caixa-pending-payments"],

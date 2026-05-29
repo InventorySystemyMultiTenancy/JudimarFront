@@ -13,7 +13,11 @@ import {
   supportsDesktopNotifications,
 } from "../lib/desktopNotifications.js";
 import { compareOrdersByUrgency, getOrderEta } from "../lib/orderEta.js";
-import { playKitchenAlertTone } from "../lib/playKitchenAlertTone.js";
+import {
+  installKitchenOrderAudioUnlock,
+  playKitchenAlertTone,
+  playKitchenOrderAudio,
+} from "../lib/playKitchenAlertTone.js";
 import {
   clearStaffUnreadCount,
   getStaffUnreadCount,
@@ -731,6 +735,7 @@ function KitchenPage() {
 
   useEffect(() => subscribeToStaffUnreadCount(setUnreadCount), []);
   useEffect(() => subscribeToWaiterCalls(setWaiterCalls), []);
+  useEffect(() => installKitchenOrderAudioUnlock(), []);
 
   useEffect(() => {
     const timeouts = new Map();
@@ -749,7 +754,7 @@ function KitchenPage() {
       });
 
       if (effectiveSoundEnabled) {
-        playKitchenAlertTone("new-order");
+        playKitchenOrderAudio();
       }
 
       const previousTimeout = timeouts.get(payload.orderId);
