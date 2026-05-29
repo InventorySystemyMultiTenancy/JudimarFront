@@ -231,8 +231,8 @@ function PendingOrderCard({
             key={item.id}
             className="rounded-2xl bg-accent/60 px-4 py-3"
           >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="checkbox"
@@ -245,6 +245,16 @@ function PendingOrderCard({
                     {item.product?.name ?? item.productName ?? "Item"}
                   </span>
                 </label>
+                {orderCount > 1 ? (
+                  <p className="mt-1 text-xs font-bold uppercase text-gray-500">
+                    Pedido #{item.sourceOrderId?.slice(-6).toUpperCase()}
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="text-sm font-black text-primary">
+                  {currency(item.totalPrice)}
+                </span>
                 <button
                   type="button"
                   onClick={() =>
@@ -254,20 +264,12 @@ function PendingOrderCard({
                     })
                   }
                   disabled={disabled}
-                  className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs font-black leading-none text-white transition hover:bg-red-700 disabled:opacity-50"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-xs font-black leading-none text-white transition hover:bg-red-700 disabled:opacity-50"
                   title="Remover item"
                 >
                   X
                 </button>
-                {orderCount > 1 ? (
-                  <p className="mt-1 text-xs font-bold uppercase text-gray-500">
-                    Pedido #{item.sourceOrderId?.slice(-6).toUpperCase()}
-                  </p>
-                ) : null}
               </div>
-              <span className="text-sm font-black text-primary">
-                {currency(item.totalPrice)}
-              </span>
             </div>
           </li>
         ))}
