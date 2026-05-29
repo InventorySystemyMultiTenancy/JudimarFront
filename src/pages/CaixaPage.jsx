@@ -85,6 +85,7 @@ function decorateOrderItems(order) {
     id: `${order.id}-${item.id}`,
     originalItemId: item.id,
     sourceOrderId: order.id,
+    sourceOrderTotal: order.total,
   }));
 }
 
@@ -138,20 +139,19 @@ function PendingOrderCard({
   order,
   products,
   editingTotals,
-  editingTotal,
   onPay,
-  onTotalChange,
   onOrderTotalChange,
-  onUpdateTotal,
   onUpdateOrderTotal,
   onUpdateItem,
+  activeTotalEditorId,
+  onStartTotalEdit,
+  onStopTotalEdit,
   disabled,
   updatingTotal,
   updatingItem,
 }) {
   const origin = getOrigin(order);
   const orderCount = order.orderIds?.length ?? 1;
-  const canEditTotal = orderCount === 1;
 
   return (
     <article className="rounded-3xl border border-gold/20 bg-white p-5 shadow-sm">
@@ -207,9 +207,67 @@ function PendingOrderCard({
                   </p>
                 ) : null}
               </div>
-              <span className="text-sm font-black text-primary">
-                {currency(item.totalPrice)}
-              </span>
+              {activeTotalEditorId === item.sourceOrderId ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    autoFocus
+                    value={
+                      editingTotals[item.sourceOrderId] ??
+                      Number(item.sourceOrderTotal ?? item.totalPrice ?? 0).toFixed(2)
+                    }
+                    onChange={(event) =>
+                      onOrderTotalChange(item.sourceOrderId, event.target.value)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        onUpdateOrderTotal(
+                          item.sourceOrderId,
+                          editingTotals[item.sourceOrderId] ??
+                            Number(item.sourceOrderTotal ?? item.totalPrice ?? 0).toFixed(2),
+                        );
+                        onStopTotalEdit();
+                      }
+                      if (event.key === "Escape") {
+                        onStopTotalEdit();
+                      }
+                    }}
+                    className="w-24 rounded-xl border border-orange-300 bg-white px-3 py-2 text-right text-sm font-black text-gray-900 outline-none focus:border-orange-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onUpdateOrderTotal(
+                        item.sourceOrderId,
+                        editingTotals[item.sourceOrderId] ??
+                          Number(item.sourceOrderTotal ?? item.totalPrice ?? 0).toFixed(2),
+                      );
+                      onStopTotalEdit();
+                    }}
+                    disabled={disabled || updatingTotal}
+                    className="rounded-xl bg-orange-600 px-3 py-2 text-xs font-black uppercase text-white transition hover:bg-orange-700 disabled:opacity-50"
+                  >
+                    OK
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onStartTotalEdit(
+                      item.sourceOrderId,
+                      Number(item.sourceOrderTotal ?? item.totalPrice ?? 0).toFixed(2),
+                    )
+                  }
+                  disabled={disabled || updatingTotal}
+                  className="rounded-xl px-2 py-1 text-sm font-black text-primary transition hover:bg-orange-100 hover:text-orange-700 disabled:opacity-50"
+                  title="Clique para alterar o valor"
+                >
+                  {currency(item.sourceOrderTotal ?? item.totalPrice)}
+                </button>
+              )}
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <select
@@ -242,78 +300,6 @@ function PendingOrderCard({
         </p>
       ) : null}
 
-      <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-3">
-        {canEditTotal ? (
-          <div className="flex flex-wrap items-end gap-2">
-            <label className="min-w-[160px] flex-1">
-              <span className="text-xs font-black uppercase tracking-widest text-gray-500">
-                Editar valor
-              </span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={editingTotal}
-                onChange={(event) => onTotalChange(order, event.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm font-black text-gray-800 outline-none transition focus:border-gold/60"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => onUpdateTotal(order)}
-              disabled={disabled || updatingTotal}
-              className="rounded-xl bg-orange-600 px-4 py-3 text-sm font-black uppercase text-white transition hover:bg-orange-700 disabled:opacity-50"
-            >
-              Alterar valor
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-xs font-black uppercase tracking-widest text-gray-500">
-              Editar valores dos pedidos
-            </p>
-            {order.orders.map((groupedOrder) => {
-              const groupedOrderTotal =
-                editingTotals[groupedOrder.id] ??
-                Number(groupedOrder.total ?? 0).toFixed(2);
-
-              return (
-                <div
-                  key={groupedOrder.id}
-                  className="flex flex-wrap items-end gap-2"
-                >
-                  <label className="min-w-[160px] flex-1">
-                    <span className="text-xs font-bold uppercase text-gray-500">
-                      Pedido #{groupedOrder.id.slice(-6).toUpperCase()}
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={groupedOrderTotal}
-                      onChange={(event) =>
-                        onOrderTotalChange(groupedOrder.id, event.target.value)
-                      }
-                      className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm font-black text-gray-800 outline-none transition focus:border-gold/60"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onUpdateOrderTotal(groupedOrder.id, groupedOrderTotal)
-                    }
-                    disabled={disabled || updatingTotal}
-                    className="rounded-xl bg-orange-600 px-4 py-3 text-sm font-black uppercase text-white transition hover:bg-orange-700 disabled:opacity-50"
-                  >
-                    Alterar
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
       <button
         type="button"
         onClick={() => onPay(order)}
@@ -331,6 +317,7 @@ export default function CaixaPage() {
   const [originFilter, setOriginFilter] = useState("TODOS");
   const [comandaSearch, setComandaSearch] = useState("");
   const [editingTotals, setEditingTotals] = useState({});
+  const [activeTotalEditorId, setActiveTotalEditorId] = useState(null);
 
   useEffect(() => installKitchenOrderAudioUnlock(), []);
 
@@ -452,30 +439,16 @@ export default function CaixaPage() {
     }
   };
 
-  const handleTotalChange = (order, value) => {
-    const orderId = order.orderIds?.[0] ?? order.id;
-    setEditingTotals((current) => ({ ...current, [orderId]: value }));
-  };
-
   const handleOrderTotalChange = (orderId, value) => {
     setEditingTotals((current) => ({ ...current, [orderId]: value }));
   };
 
-  const getEditingTotal = (order) => {
-    const orderId = order.orderIds?.[0] ?? order.id;
-    return editingTotals[orderId] ?? Number(order.total ?? 0).toFixed(2);
-  };
-
-  const handleUpdateTotal = (order) => {
-    const orderId = order.orderIds?.[0] ?? order.id;
-    const total = Number(String(getEditingTotal(order)).replace(",", "."));
-
-    if (!Number.isFinite(total) || total < 0) {
-      toast.error("Informe um valor valido.");
-      return;
-    }
-
-    updateTotal.mutate({ orderId, total });
+  const handleStartTotalEdit = (orderId, value) => {
+    setActiveTotalEditorId(orderId);
+    setEditingTotals((current) => ({
+      ...current,
+      [orderId]: current[orderId] ?? value,
+    }));
   };
 
   const handleUpdateOrderTotal = (orderId, value) => {
@@ -593,13 +566,13 @@ export default function CaixaPage() {
                 order={order}
                 products={products}
                 editingTotals={editingTotals}
-                editingTotal={getEditingTotal(order)}
                 onPay={handlePay}
-                onTotalChange={handleTotalChange}
                 onOrderTotalChange={handleOrderTotalChange}
-                onUpdateTotal={handleUpdateTotal}
                 onUpdateOrderTotal={handleUpdateOrderTotal}
                 onUpdateItem={handleUpdateItem}
+                activeTotalEditorId={activeTotalEditorId}
+                onStartTotalEdit={handleStartTotalEdit}
+                onStopTotalEdit={() => setActiveTotalEditorId(null)}
                 disabled={
                   markPaid.isPending || updateTotal.isPending || updateItem.isPending
                 }
