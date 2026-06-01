@@ -43,6 +43,9 @@ const STATUS_COLORS = {
   PAGO: "bg-secondary",
 };
 
+const EMPTY_ARRAY = [];
+const EMPTY_OBJECT = {};
+
 function MetricCard({ label, value, hint, accent = false }) {
   return (
     <article
@@ -85,6 +88,7 @@ function SalesAnalyticsPage() {
   const now = new Date();
   const [filterYear, setFilterYear] = useState(now.getFullYear());
   const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1); // 1-12 or 0 = whole year
+  const [filterDay, setFilterDay] = useState(0); // 1-31 or 0 = whole month
   const [hoveredBar, setHoveredBar] = useState(null);
 
   const monthShort = useMemo(
@@ -129,10 +133,26 @@ function SalesAnalyticsPage() {
     }
     const lastDay = new Date(filterYear, filterMonth, 0).getDate();
     const mm = String(filterMonth).padStart(2, "0");
+    if (filterDay > 0) {
+      const dd = String(Math.min(filterDay, lastDay)).padStart(2, "0");
+      return {
+        from: `${filterYear}-${mm}-${dd}`,
+        to: `${filterYear}-${mm}-${dd}`,
+      };
+    }
     return {
       from: `${filterYear}-${mm}-01`,
       to: `${filterYear}-${mm}-${lastDay}`,
     };
+  }, [filterYear, filterMonth, filterDay]);
+
+  const dayOptions = useMemo(() => {
+    if (filterMonth === 0) {
+      return [];
+    }
+
+    const lastDay = new Date(filterYear, filterMonth, 0).getDate();
+    return Array.from({ length: lastDay }, (_, index) => index + 1);
   }, [filterYear, filterMonth]);
 
   const yearOptions = useMemo(() => {
@@ -152,16 +172,21 @@ function SalesAnalyticsPage() {
   });
 
   const summary = data?.summary;
-  const dailySales = data?.dailySales ?? [];
-  const topProducts = data?.topProducts ?? [];
-  const paymentMethods = data?.paymentMethods ?? [];
-  const orderTypes = data?.orderTypes ?? [];
-  const rawStatusCounts = data?.statusCounts ?? {};
+  const dailySales = data?.dailySales ?? EMPTY_ARRAY;
+  const hourlySales = data?.hourlySales ?? EMPTY_ARRAY;
+  const topProducts = data?.topProducts ?? EMPTY_ARRAY;
+  const paymentMethods = data?.paymentMethods ?? EMPTY_ARRAY;
+  const orderTypes = data?.orderTypes ?? EMPTY_ARRAY;
+  const rawStatusCounts = data?.statusCounts ?? EMPTY_OBJECT;
   const statusCounts = summary
     ? { ...rawStatusCounts, PAGO: summary.paidOrdersCount }
     : rawStatusCounts;
 
   const maxRevenue = Math.max(...dailySales.map((item) => item.revenue), 1);
+  const maxHourlyRevenue = Math.max(
+    ...hourlySales.map((item) => item.revenue),
+    1,
+  );
   const maxOrders = Math.max(...Object.values(statusCounts), 1);
 
   // ── Insights computados ─────────────────────────────────────────────
@@ -195,16 +220,22 @@ function SalesAnalyticsPage() {
     const avgRevenueActiveDays =
       activeDays.length > 0 ? summary.totalRevenue / activeDays.length : null;
 
+    const bestHour = hourlySales.reduce(
+      (best, item) => (item.revenue > (best?.revenue ?? 0) ? item : best),
+      null,
+    );
+
     return {
       profitMargin,
       cancellationRate,
       conversionRate,
       bestDay,
+      bestHour,
       activeDays: activeDays.length,
       totalDays: dailySales.length,
       avgRevenueActiveDays,
     };
-  }, [summary, dailySales, rawStatusCounts]);
+  }, [summary, dailySales, hourlySales, rawStatusCounts]);
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-6xl px-4 py-6 font-body text-primary sm:px-6">
@@ -220,7 +251,10 @@ function SalesAnalyticsPage() {
         <div className="flex flex-wrap items-center gap-3">
           <select
             value={filterYear}
-            onChange={(e) => setFilterYear(Number(e.target.value))}
+            onChange={(e) => {
+              setFilterYear(Number(e.target.value));
+              setFilterDay(0);
+            }}
             className="rounded-xl border border-border-soft bg-white px-3 py-2 text-sm transition hover:border-secondary/40 focus:outline-none"
           >
             {yearOptions.map((y) => (
@@ -231,13 +265,29 @@ function SalesAnalyticsPage() {
           </select>
           <select
             value={filterMonth}
-            onChange={(e) => setFilterMonth(Number(e.target.value))}
+            onChange={(e) => {
+              setFilterMonth(Number(e.target.value));
+              setFilterDay(0);
+            }}
             className="rounded-xl border border-border-soft bg-white px-3 py-2 text-sm transition hover:border-secondary/40 focus:outline-none"
           >
             <option value={0}>Ano todo</option>
             {monthLabel.map((m, i) => (
               <option key={i + 1} value={i + 1}>
                 {m}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterDay}
+            onChange={(e) => setFilterDay(Number(e.target.value))}
+            disabled={filterMonth === 0}
+            className="rounded-xl border border-border-soft bg-white px-3 py-2 text-sm transition hover:border-secondary/40 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <option value={0}>Mês todo</option>
+            {dayOptions.map((day) => (
+              <option key={day} value={day}>
+                Dia {String(day).padStart(2, "0")}
               </option>
             ))}
           </select>
@@ -418,6 +468,8 @@ function SalesAnalyticsPage() {
                 <h2 className="font-display text-xl text-primary">
                   {filterMonth === 0
                     ? `Por mês — ${filterYear}`
+                    : filterDay > 0
+                      ? `${String(filterDay).padStart(2, "0")} de ${monthLabel[filterMonth - 1]} ${filterYear}`
                     : `${monthLabel[filterMonth - 1]} ${filterYear}`}
                 </h2>
                 <div className="flex items-center gap-3 text-xs text-smoke">
@@ -569,6 +621,53 @@ function SalesAnalyticsPage() {
           </section>
 
           {/* ── Insights do Período ───────────────────────────────── */}
+          <section className="mt-6 rounded-3xl border border-border-soft bg-white p-5 shadow-card">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="font-display text-xl text-primary">
+                  Horarios de Pico
+                </h2>
+                <p className="mt-1 text-xs text-smoke">
+                  Receita e pedidos aprovados por hora no periodo selecionado.
+                </p>
+              </div>
+              <span className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-primary">
+                {hourlySales.reduce((sum, item) => sum + item.orders, 0)} pedido(s)
+              </span>
+            </div>
+            <div className="mt-5 flex h-44 items-end gap-1">
+              {hourlySales.map((item) => {
+                const hasRevenue = item.revenue > 0;
+                const height = `${Math.max((item.revenue / maxHourlyRevenue) * 100, hasRevenue ? 8 : 2)}%`;
+                return (
+                  <div
+                    key={item.hour}
+                    className="group flex flex-1 flex-col items-center justify-end"
+                    title={`${String(item.hour).padStart(2, "0")}:00 - ${item.orders} pedido(s) - ${formatCurrency(item.revenue, locale)}`}
+                  >
+                    <div className="flex h-full w-full items-end rounded-lg bg-accent/40 p-0.5 transition group-hover:bg-accent">
+                      <div
+                        className={`w-full rounded-md transition-all ${
+                          hasRevenue ? "bg-primary" : "bg-accent-dark/40"
+                        }`}
+                        style={{ height }}
+                      />
+                    </div>
+                    <span
+                      className={`mt-1 text-[9px] ${
+                        hasRevenue ? "font-semibold text-primary" : "text-smoke"
+                      }`}
+                    >
+                      {item.hour % 3 === 0
+                        ? `${String(item.hour).padStart(2, "0")}h`
+                        : ""}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
           {insights ? (
             <section className="mt-6">
               <h2 className="font-display text-xl text-primary">
@@ -626,6 +725,21 @@ function SalesAnalyticsPage() {
                       : "Sem vendas no período"
                   }
                   color="bg-amber-50"
+                />
+                <InsightCard
+                  icon="⏱"
+                  label="Horario de Pico"
+                  value={
+                    insights.bestHour?.revenue > 0
+                      ? `${String(insights.bestHour.hour).padStart(2, "0")}:00`
+                      : "â€”"
+                  }
+                  sub={
+                    insights.bestHour?.revenue > 0
+                      ? `${insights.bestHour.orders} pedido(s) - ${formatCurrency(insights.bestHour.revenue, locale)}`
+                      : "Sem vendas no periodo"
+                  }
+                  color="bg-blue-50"
                 />
                 <InsightCard
                   icon="📅"
