@@ -206,6 +206,7 @@ export default function AtendentePanel() {
   const [selectedComandaId, setSelectedComandaId] = useState("");
   const [newComandaName, setNewComandaName] = useState("");
   const [comandaSearch, setComandaSearch] = useState("");
+  const [comandaRange, setComandaRange] = useState("1-10");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [showComandas, setShowComandas] = useState(true);
@@ -312,14 +313,20 @@ export default function AtendentePanel() {
 
   const filteredComandas = useMemo(() => {
     const normalized = comandaSearch.trim().toLowerCase();
-    if (!normalized) return comandas;
+    const [rangeStart, rangeEnd] = comandaRange.split("-").map(Number);
 
     return comandas.filter((comanda) => {
+      const number = Number(comanda.number) || 0;
+      const isInRange = number >= rangeStart && number <= rangeEnd;
+      if (!isInRange) return false;
+
+      if (!normalized) return true;
+
       const haystack =
         `${comanda.name ?? ""} ${comanda.number ?? ""}`.toLowerCase();
       return haystack.includes(normalized);
     });
-  }, [comandaSearch, comandas]);
+  }, [comandaRange, comandaSearch, comandas]);
 
   const nextComandaNumber = useMemo(() => {
     const highestNumber = comandas.reduce(
@@ -945,7 +952,7 @@ export default function AtendentePanel() {
 
           {showComandas ? (
             <>
-              <div className="mt-4">
+              <div className="mt-4 grid gap-3 md:grid-cols-[1fr_180px]">
                 <input
                   type="search"
                   value={comandaSearch}
@@ -953,6 +960,15 @@ export default function AtendentePanel() {
                   placeholder="Pesquisar comanda por nome ou número"
                   className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-secondary/60"
                 />
+                <select
+                  value={comandaRange}
+                  onChange={(event) => setComandaRange(event.target.value)}
+                  className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-primary shadow-sm outline-none transition focus:border-secondary/60"
+                >
+                  <option value="1-10">Comandas 1 a 10</option>
+                  <option value="11-20">Comandas 11 a 20</option>
+                  <option value="21-30">Comandas 21 a 30</option>
+                </select>
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
