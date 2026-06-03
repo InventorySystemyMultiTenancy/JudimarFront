@@ -311,13 +311,31 @@ export default function AtendentePanel() {
     [comandas, selectedComandaTargetId],
   );
 
+  const hasComandasAfterThirty = useMemo(
+    () => comandas.some((comanda) => Number(comanda.number) >= 31),
+    [comandas],
+  );
+
+  useEffect(() => {
+    if (comandaRange === "31+" && !hasComandasAfterThirty) {
+      setComandaRange("1-10");
+    }
+  }, [comandaRange, hasComandasAfterThirty]);
+
   const filteredComandas = useMemo(() => {
     const normalized = comandaSearch.trim().toLowerCase();
-    const [rangeStart, rangeEnd] = comandaRange.split("-").map(Number);
 
     return comandas.filter((comanda) => {
       const number = Number(comanda.number) || 0;
-      const isInRange = number >= rangeStart && number <= rangeEnd;
+      const isInRange =
+        comandaRange === "31+"
+          ? number >= 31
+          : (() => {
+              const [rangeStart, rangeEnd] = comandaRange
+                .split("-")
+                .map(Number);
+              return number >= rangeStart && number <= rangeEnd;
+            })();
       if (!isInRange) return false;
 
       if (!normalized) return true;
@@ -968,6 +986,9 @@ export default function AtendentePanel() {
                   <option value="1-10">Comandas 1 a 10</option>
                   <option value="11-20">Comandas 11 a 20</option>
                   <option value="21-30">Comandas 21 a 30</option>
+                  {hasComandasAfterThirty ? (
+                    <option value="31+">Comandas 31 em diante</option>
+                  ) : null}
                 </select>
               </div>
 

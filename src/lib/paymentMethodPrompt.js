@@ -5,6 +5,7 @@ export const PAYMENT_METHOD_OPTIONS = {
   DEBITO: "Débito",
   PIX: "Pix",
   DINHEIRO: "Dinheiro",
+  VOUCHER: "Voucher",
 };
 
 export async function askPaymentMethod({
@@ -19,7 +20,7 @@ export async function askPaymentMethod({
     input: "radio",
     inputOptions: PAYMENT_METHOD_OPTIONS,
     inputValidator: (value) =>
-      value ? undefined : "Selecione crédito, débito ou Pix.",
+      value ? undefined : "Selecione a forma de pagamento.",
     showCancelButton: true,
     confirmButtonText,
     cancelButtonText,
