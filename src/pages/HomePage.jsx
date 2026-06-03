@@ -49,7 +49,7 @@ function HomePage() {
       {/* Linha decorativa Desde 1983 */}
       <div className="border-b border-border-soft bg-primary py-3 text-center">
         <p className="font-display text-xs uppercase tracking-[0.4em] text-secondary">
-          Bar &amp; Restaurante &middot; Desde 1983 &middot; S\u00e3o Paulo
+          Bar &amp; Restaurante &middot; Desde 1983 &middot; São Paulo
         </p>
       </div>
 
