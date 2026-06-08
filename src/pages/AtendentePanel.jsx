@@ -214,7 +214,7 @@ export default function AtendentePanel() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [showComandas, setShowComandas] = useState(true);
   const [showProducts, setShowProducts] = useState(false);
-  const [showPhotos, setShowPhotos] = useState(false);
+  const [showPhotos, setShowPhotos] = useState(true);
   const [mesaNotes, setMesaNotes] = useState({});
   const [editingOrderTotals, setEditingOrderTotals] = useState({});
 

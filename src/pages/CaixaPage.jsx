@@ -633,26 +633,7 @@ export default function CaixaPage() {
           </div>
         </div>
 
-        <section className="mb-5 grid gap-4 md:grid-cols-2">
-          <div className="rounded-3xl border border-red-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-bold uppercase tracking-widest text-red-500">
-              Total em aberto
-            </p>
-            <p className="mt-1 text-5xl font-black text-red-600">
-              {currency(totals.pendingTotal)}
-            </p>
-          </div>
-          <div className="rounded-3xl border border-gold/20 bg-white p-5 shadow-sm">
-            <p className="text-sm font-bold uppercase tracking-widest text-smoke">
-              Pedidos pendentes
-            </p>
-            <p className="mt-1 text-5xl font-black text-primary">
-              {totals.count}
-            </p>
-          </div>
-        </section>
-
-        <div className="mb-6 space-y-3">
+        <div className="mb-5 space-y-3">
           <input
             type="search"
             value={comandaSearch}
@@ -677,6 +658,25 @@ export default function CaixaPage() {
             ))}
           </div>
         </div>
+
+        <section className="mb-6 grid gap-4 md:grid-cols-2">
+          <div className="rounded-3xl border border-red-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-bold uppercase tracking-widest text-red-500">
+              Total em aberto
+            </p>
+            <p className="mt-1 text-5xl font-black text-red-600">
+              {currency(totals.pendingTotal)}
+            </p>
+          </div>
+          <div className="rounded-3xl border border-gold/20 bg-white p-5 shadow-sm">
+            <p className="text-sm font-bold uppercase tracking-widest text-smoke">
+              Pedidos pendentes
+            </p>
+            <p className="mt-1 text-5xl font-black text-primary">
+              {totals.count}
+            </p>
+          </div>
+        </section>
 
         {isLoading ? (
           <div className="rounded-3xl border border-gray-200 bg-white p-10 text-center font-bold text-gray-500">
