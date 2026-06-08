@@ -57,8 +57,10 @@ export default function ViagemPanel() {
     subtotal,
   } = useCart();
   const [customValue, setCustomValue] = useState("");
+  const [customObservation, setCustomObservation] = useState("");
   const [sendDiversosToKitchen, setSendDiversosToKitchen] = useState(true);
   const [search, setSearch] = useState("");
+  const [waiterOnlySearch, setWaiterOnlySearch] = useState("");
 
   useEffect(() => {
     setCartScope("viagem");
@@ -95,7 +97,7 @@ export default function ViagemPanel() {
   }, [products, search]);
 
   const waiterOnlyProducts = useMemo(() => {
-    const normalized = search.trim().toLowerCase();
+    const normalized = waiterOnlySearch.trim().toLowerCase();
     return products
       .filter(isWaiterOnlyProduct)
       .filter((product) => {
@@ -104,7 +106,7 @@ export default function ViagemPanel() {
           .toLowerCase()
           .includes(normalized);
       });
-  }, [products, search]);
+  }, [products, waiterOnlySearch]);
 
   const createOrder = useMutation({
     mutationFn: async () => {
@@ -182,6 +184,7 @@ export default function ViagemPanel() {
       toast.error("Informe o valor do Diversos.");
       return;
     }
+    const observation = customObservation.trim();
 
     addItem({
       key: [
@@ -197,6 +200,7 @@ export default function ViagemPanel() {
       observation: [
         "MARMITA",
         `DIVERSOS ${currency(total)}`,
+        observation,
         sendDiversosToKitchen ? "" : "JA ENTREGUE",
       ]
         .filter(Boolean)
@@ -204,11 +208,12 @@ export default function ViagemPanel() {
       payload: {
         productId: diversosProduct.id,
         manualPrice: total,
-        notes: "MARMITA",
+        notes: ["MARMITA", observation].filter(Boolean).join(" - "),
         deliverImmediately: !sendDiversosToKitchen,
       },
     });
     setCustomValue("");
+    setCustomObservation("");
   };
 
   const handleSubmitCart = () => {
@@ -264,6 +269,13 @@ export default function ViagemPanel() {
               onChange={(event) => setCustomValue(event.target.value)}
               placeholder="Digite o valor"
               className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 text-lg font-black outline-none transition focus:border-orange-500"
+            />
+            <input
+              type="text"
+              value={customObservation}
+              onChange={(event) => setCustomObservation(event.target.value)}
+              placeholder="Observação"
+              className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 text-sm font-semibold outline-none transition focus:border-orange-500 lg:col-span-3"
             />
             <label className="flex min-h-14 items-center gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-black uppercase text-orange-800">
               <input
@@ -426,11 +438,20 @@ export default function ViagemPanel() {
         </section>
 
         <section className="mt-5 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="font-display text-2xl text-primary">Somente garçom</h2>
-            <p className="mt-1 text-sm text-smoke">
-              Itens desta seção entram no carrinho como já entregues.
-            </p>
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="font-display text-2xl text-primary">Somente garçom</h2>
+              <p className="mt-1 text-sm text-smoke">
+                Itens desta seção entram no carrinho como já entregues.
+              </p>
+            </div>
+            <input
+              type="search"
+              value={waiterOnlySearch}
+              onChange={(event) => setWaiterOnlySearch(event.target.value)}
+              placeholder="Buscar item"
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-orange-500 sm:w-72"
+            />
           </div>
 
           {isLoading ? (

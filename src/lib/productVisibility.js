@@ -12,9 +12,16 @@ export const isBebidasCategory = (category) => {
   return normalized === "bebida" || normalized === "bebidas";
 };
 
+export const isPorcoesCategory = (category) => {
+  const normalized = normalize(category);
+  return normalized === "porcao" || normalized === "porcoes";
+};
+
 export const isViagemProduct = (product) => isViagemCategory(product?.category);
 
 export const isViagemPanelProduct = (product) =>
-  isViagemProduct(product) || isBebidasCategory(product?.category);
+  isViagemProduct(product) ||
+  isBebidasCategory(product?.category) ||
+  isPorcoesCategory(product?.category);
 
 export const isRegularProduct = (product) => !isViagemProduct(product);
