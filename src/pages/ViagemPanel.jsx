@@ -36,6 +36,9 @@ const isViagemMenuProduct = (product) =>
 const isWaiterOnlyProduct = (product) =>
   Boolean(product?.waiterOnly) && !product?.isAddon;
 
+const getProductImage = (product) =>
+  product?.imageUrl || product?.image || product?.photo || "";
+
 function buildMarmitaPayload(items) {
   return {
     isPickup: true,
@@ -43,6 +46,41 @@ function buildMarmitaPayload(items) {
     notes: "MARMITA",
     items,
   };
+}
+
+function ProductButton({ product, onClick, disabled }) {
+  const imageUrl = getProductImage(product);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="overflow-hidden rounded-2xl border border-gray-200 bg-accent/60 text-left transition hover:border-orange-500 hover:bg-orange-50 disabled:opacity-50"
+    >
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={product.name}
+          className="h-36 w-full bg-white object-cover"
+          loading="lazy"
+        />
+      ) : null}
+      <div className="p-4">
+        <span className="block font-display text-xl text-primary">
+          {product.name}
+        </span>
+        {product.category ? (
+          <span className="mt-1 block text-xs font-bold uppercase tracking-widest text-gray-500">
+            {product.category}
+          </span>
+        ) : null}
+        <span className="mt-4 block text-lg font-black text-orange-600">
+          {currency(getProductPrice(product))}
+        </span>
+      </div>
+    </button>
+  );
 }
 
 export default function ViagemPanel() {
@@ -408,25 +446,12 @@ export default function ViagemPanel() {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {viagemProducts.map((product) => (
-                <button
+                <ProductButton
                   key={product.id}
-                  type="button"
                   onClick={() => addProductToCart(product)}
                   disabled={createOrder.isPending}
-                  className="rounded-2xl border border-gray-200 bg-accent/60 p-4 text-left transition hover:border-orange-500 hover:bg-orange-50 disabled:opacity-50"
-                >
-                  <span className="block font-display text-xl text-primary">
-                    {product.name}
-                  </span>
-                  {product.category ? (
-                    <span className="mt-1 block text-xs font-bold uppercase tracking-widest text-gray-500">
-                      {product.category}
-                    </span>
-                  ) : null}
-                  <span className="mt-4 block text-lg font-black text-orange-600">
-                    {currency(getProductPrice(product))}
-                  </span>
-                </button>
+                  product={product}
+                />
               ))}
               {!viagemProducts.length ? (
                 <div className="col-span-full rounded-2xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">
@@ -465,25 +490,12 @@ export default function ViagemPanel() {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {waiterOnlyProducts.map((product) => (
-                <button
+                <ProductButton
                   key={product.id}
-                  type="button"
                   onClick={() => addWaiterOnlyToCart(product)}
                   disabled={createOrder.isPending}
-                  className="rounded-2xl border border-gray-200 bg-accent/60 p-4 text-left transition hover:border-orange-500 hover:bg-orange-50 disabled:opacity-50"
-                >
-                  <span className="block font-display text-xl text-primary">
-                    {product.name}
-                  </span>
-                  {product.category ? (
-                    <span className="mt-1 block text-xs font-bold uppercase tracking-widest text-gray-500">
-                      {product.category}
-                    </span>
-                  ) : null}
-                  <span className="mt-4 block text-lg font-black text-orange-600">
-                    {currency(getProductPrice(product))}
-                  </span>
-                </button>
+                  product={product}
+                />
               ))}
               {!waiterOnlyProducts.length ? (
                 <div className="col-span-full rounded-2xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">

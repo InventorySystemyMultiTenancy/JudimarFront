@@ -103,7 +103,11 @@ function isMarmitaOrder(order) {
 }
 
 function getNextStageKey(status, order) {
-  if ((isInHouseOrder(order) || order?.isPickup) && status === "PREPARANDO") {
+  if (order?.isPickup && status === "PREPARANDO") {
+    return "ENTREGUE";
+  }
+
+  if (isInHouseOrder(order) && status === "PREPARANDO") {
     return "SAIU_PARA_ENTREGA";
   }
 
@@ -116,7 +120,7 @@ function getNextColumnKey(status, order) {
   }
 
   if (order?.isPickup && status === "PREPARANDO") {
-    return "RETIRADA_PRONTA";
+    return "ENTREGUE";
   }
 
   return getNextStageKey(status, order);
@@ -260,7 +264,7 @@ function OrderCard({
         ? "Levar para a Comanda"
         : t("KITCHEN_ADVANCE_TO_TABLE", "Levar para a Mesa")
       : order.isPickup && order.status === "PREPARANDO"
-        ? t("KITCHEN_READY_PICKUP", "Pronto p/ Retirada")
+        ? t("KITCHEN_READY_PICKUP_DELIVERED", "Pronto e Entregue")
       : isInHouseOrder(order) && order.status === "PRONTO"
       ? order.comandaId || order.comanda
         ? "Levar para a Comanda"
