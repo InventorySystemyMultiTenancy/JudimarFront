@@ -8,6 +8,7 @@ import { useCart } from "../context/CartContext.jsx";
 import { useAuth } from "../hooks/useAuth.js";
 import { api } from "../lib/api.js";
 import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
+import { isRegularProduct } from "../lib/productVisibility.js";
 import {
   clearWaiterCalls,
   dismissWaiterCall,
@@ -359,7 +360,9 @@ export default function AtendentePanel() {
   const categories = useMemo(() => {
     const seen = new Set();
     const result = [];
-    for (const p of products.filter((product) => !product.isAddon)) {
+    for (const p of products.filter(
+      (product) => isRegularProduct(product) && !product.isAddon,
+    )) {
       const cat = p.category ?? "";
       if (cat && !seen.has(cat)) {
         seen.add(cat);
@@ -372,7 +375,7 @@ export default function AtendentePanel() {
   const addonProducts = useMemo(
     () =>
       products
-        .filter((product) => product.isAddon)
+        .filter((product) => isRegularProduct(product) && product.isAddon)
         .map((product) => ({
           ...product,
           nome: product.name,
@@ -385,6 +388,7 @@ export default function AtendentePanel() {
   const filteredProducts = useMemo(() => {
     const normalized = search.trim().toLowerCase();
     return products.filter((product) => {
+      if (!isRegularProduct(product)) return false;
       if (product.isAddon) return false;
       if (selectedCategory && product.category !== selectedCategory)
         return false;

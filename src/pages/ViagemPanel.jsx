@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useAuth } from "../hooks/useAuth.js";
 import { api } from "../lib/api.js";
+import { isViagemProduct } from "../lib/productVisibility.js";
 
 const currency = (value) =>
   Number(value || 0).toLocaleString("pt-BR", {
@@ -17,29 +18,8 @@ const getProductPrice = (product) =>
       : product?.price ?? product?.basePrice ?? product?.sizes?.[0]?.price ?? 0,
   );
 
-const isDiversosProduct = (product) =>
-  String(product?.name ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .includes("diversos");
-
-const isPlateProduct = (product) => {
-  if (product.isAddon || product.waiterOnly || isDiversosProduct(product)) {
-    return false;
-  }
-
-  const haystack = `${product.name ?? ""} ${product.category ?? ""} ${
-    product.description ?? ""
-  }`
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
-  return !["bebida", "refri", "suco", "cha", "cerveja"].some((term) =>
-    haystack.includes(term),
-  );
-};
+const isViagemMenuProduct = (product) =>
+  isViagemProduct(product) && !product.isAddon && !product.waiterOnly;
 
 function buildMarmitaPayload(product, extraNotes = "") {
   return {
@@ -59,24 +39,18 @@ function buildMarmitaPayload(product, extraNotes = "") {
 
 export default function ViagemPanel() {
   const { logout, user } = useAuth();
-  const [customValue, setCustomValue] = useState("");
   const [search, setSearch] = useState("");
 
   const { data: products = [], isLoading, isError } = useQuery({
     queryKey: ["viagem-products"],
-    queryFn: async () => (await api.get("/products")).data?.data ?? [],
+    queryFn: async () => (await api.get("/products/viagem")).data?.data ?? [],
     staleTime: 5 * 60 * 1000,
   });
 
-  const diversosProduct = useMemo(
-    () => products.find(isDiversosProduct) ?? null,
-    [products],
-  );
-
-  const plateProducts = useMemo(() => {
+  const viagemProducts = useMemo(() => {
     const normalized = search.trim().toLowerCase();
     return products
-      .filter(isPlateProduct)
+      .filter(isViagemMenuProduct)
       .filter((product) => {
         if (!normalized) return true;
         return `${product.name ?? ""} ${product.category ?? ""}`
@@ -100,7 +74,6 @@ export default function ViagemPanel() {
       return order;
     },
     onSuccess: () => {
-      setCustomValue("");
       toast.success("Marmita lancada para a cozinha.");
     },
     onError: (error) =>
@@ -108,27 +81,6 @@ export default function ViagemPanel() {
         error?.response?.data?.error?.message ?? "Erro ao lancar marmita.",
       ),
   });
-
-  const handleCreateDiversos = (event) => {
-    event.preventDefault();
-
-    if (!diversosProduct) {
-      toast.error("Cadastre um produto chamado Diversos primeiro.");
-      return;
-    }
-
-    const total = Number(String(customValue).replace(",", "."));
-    if (!Number.isFinite(total) || total <= 0) {
-      toast.error("Informe o valor do Diversos.");
-      return;
-    }
-
-    createOrder.mutate({
-      product: diversosProduct,
-      total,
-      extraNotes: `DIVERSOS ${currency(total)}`,
-    });
-  };
 
   return (
     <main className="min-h-screen bg-accent px-4 py-5 text-gray-900 sm:px-8">
@@ -149,49 +101,12 @@ export default function ViagemPanel() {
           </button>
         </header>
 
-        <section className="rounded-3xl border border-orange-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase tracking-widest text-orange-600">
-                Lancamento rapido
-              </p>
-              <h2 className="mt-1 font-display text-2xl text-primary">
-                {diversosProduct?.name ?? "Diversos"}
-              </h2>
-            </div>
-            <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-black uppercase text-orange-700">
-              Marmita
-            </span>
-          </div>
-          <form
-            onSubmit={handleCreateDiversos}
-            className="grid gap-3 sm:grid-cols-[1fr_auto]"
-          >
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={customValue}
-              onChange={(event) => setCustomValue(event.target.value)}
-              placeholder="Digite o valor"
-              className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 text-lg font-black outline-none transition focus:border-orange-500"
-            />
-            <button
-              type="submit"
-              disabled={createOrder.isPending}
-              className="rounded-2xl bg-orange-600 px-6 py-4 text-sm font-black uppercase text-white transition hover:bg-orange-700 disabled:opacity-50"
-            >
-              Lancar diversos
-            </button>
-          </form>
-        </section>
-
-        <section className="mt-5 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+        <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="font-display text-2xl text-primary">Pratos</h2>
+              <h2 className="font-display text-2xl text-primary">Produtos viagem</h2>
               <p className="mt-1 text-sm text-smoke">
-                Ao clicar, o prato entra na cozinha como marmita.
+                Ao clicar, o item entra na cozinha como marmita.
               </p>
             </div>
             <input
@@ -213,7 +128,7 @@ export default function ViagemPanel() {
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {plateProducts.map((product) => (
+              {viagemProducts.map((product) => (
                 <button
                   key={product.id}
                   type="button"
@@ -240,9 +155,9 @@ export default function ViagemPanel() {
                   </span>
                 </button>
               ))}
-              {!plateProducts.length ? (
+              {!viagemProducts.length ? (
                 <div className="col-span-full rounded-2xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">
-                  Nenhum prato encontrado.
+                  Nenhum produto da categoria Viagem encontrado.
                 </div>
               ) : null}
             </div>

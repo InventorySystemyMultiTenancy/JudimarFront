@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
+import { isRegularProduct } from "../lib/productVisibility.js";
 
 const currency = (value) =>
   Number(value || 0).toLocaleString("pt-BR", {
@@ -104,7 +105,8 @@ export default function ComandasPage() {
 
   const { data: products = [] } = useQuery({
     queryKey: ["comandas-products"],
-    queryFn: async () => (await api.get("/products")).data?.data ?? [],
+    queryFn: async () =>
+      ((await api.get("/products")).data?.data ?? []).filter(isRegularProduct),
   });
 
   const selectedComanda = useMemo(

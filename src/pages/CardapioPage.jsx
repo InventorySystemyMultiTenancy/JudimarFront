@@ -7,6 +7,7 @@ import Navbar from "../components/Navbar.jsx";
 import ProductCustomizer from "../components/ProductCustomizer.jsx";
 import { useAuth } from "../hooks/useAuth.js";
 import { api } from "../lib/api.js";
+import { isRegularProduct } from "../lib/productVisibility.js";
 import { useTranslation } from "../context/I18nContext.jsx";
 
 const fmt = (value) =>
@@ -208,7 +209,9 @@ function CardapioPage() {
     return t(key, cat ?? "Geral");
   };
 
-  const menuProducts = products.filter((product) => !product.isAddon);
+  const visibleProducts = products.filter(isRegularProduct);
+  const visibleTopProducts = topProducts.filter(isRegularProduct);
+  const menuProducts = visibleProducts.filter((product) => !product.isAddon);
   const addonProducts = products
     .filter((product) => product.isAddon)
     .map((product) => ({
@@ -311,7 +314,7 @@ function CardapioPage() {
     (product) =>
       Array.isArray(product.availableDays) && product.availableDays.length > 0,
   );
-  const topIds = new Set(topProducts.map((p) => p.id));
+  const topIds = new Set(visibleTopProducts.map((p) => p.id));
   const showHomeSections =
     normalizedSearch === "" && activeCategory === ALL_LABEL;
 
@@ -420,7 +423,7 @@ function CardapioPage() {
         {/* Destaques */}
         {!isLoading &&
           !isError &&
-          topProducts.length > 0 &&
+          visibleTopProducts.length > 0 &&
           showHomeSections && (
             <div className="mb-8">
               <div className="mb-4 flex items-center gap-3">
@@ -436,7 +439,7 @@ function CardapioPage() {
                 <div className="h-px flex-1 bg-border-soft" />
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {topProducts.map((product) => (
+                {visibleTopProducts.map((product) => (
                   <MenuCard
                     key={`top-${product.id}`}
                     product={product}

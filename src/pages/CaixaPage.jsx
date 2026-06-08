@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { api } from "../lib/api.js";
 import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
+import { isRegularProduct } from "../lib/productVisibility.js";
 import {
   installKitchenOrderAudioUnlock,
   playCashOrderAudio,
@@ -380,7 +381,8 @@ export default function CaixaPage() {
 
   const { data: products = [] } = useQuery({
     queryKey: ["caixa-products"],
-    queryFn: async () => (await api.get("/products")).data?.data ?? [],
+    queryFn: async () =>
+      ((await api.get("/products")).data?.data ?? []).filter(isRegularProduct),
   });
 
   const invalidatePaymentViews = () => {

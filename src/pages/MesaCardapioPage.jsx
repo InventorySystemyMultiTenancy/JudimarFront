@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api.js";
+import { isRegularProduct } from "../lib/productVisibility.js";
 import { useTranslation } from "../context/I18nContext.jsx";
 import ChamarGarcomButton from "../components/ChamarGarcomButton.jsx";
 
@@ -85,8 +86,9 @@ function MesaCardapioPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const visibleProducts = products.filter(isRegularProduct);
   const categories = [
-    ...new Set(products.map((product) => product.category ?? "Geral")),
+    ...new Set(visibleProducts.map((product) => product.category ?? "Geral")),
   ];
   const ALL_LABEL = t("CARDAPIO_CAT_ALL", "Todos");
   const categoryOptions = [ALL_LABEL, ...categories];
@@ -94,8 +96,8 @@ function MesaCardapioPage() {
 
   const filteredByCategory =
     activeCategory === ALL_LABEL
-      ? products
-      : products.filter(
+      ? visibleProducts
+      : visibleProducts.filter(
           (product) =>
             (product.category ?? "Geral").toLowerCase() ===
             activeCategory.toLowerCase(),
@@ -108,7 +110,7 @@ function MesaCardapioPage() {
           .some((value) => value.toLowerCase().includes(normalizedSearch)),
       )
     : filteredByCategory;
-  const dailyProducts = products.filter(
+  const dailyProducts = visibleProducts.filter(
     (product) =>
       Array.isArray(product.availableDays) && product.availableDays.length > 0,
   );
