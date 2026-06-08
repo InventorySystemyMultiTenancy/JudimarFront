@@ -20,6 +20,21 @@ const PRICE_VARIANTS = [
   { id: "PRATO_FEITO", label: "Prato feito", field: "pratoFeitoPrice" },
 ];
 
+const isDiversosProduct = (product) =>
+  String(product?.name ?? product?.nome ?? "")
+    .trim()
+    .toLowerCase()
+    .includes("diversos");
+
+const parseMoneyInput = (value) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return Number.NaN;
+  const normalized = raw.includes(",")
+    ? raw.replace(/\./g, "").replace(",", ".")
+    : raw;
+  return Number(normalized);
+};
+
 function ProductCustomizer({ product, addonsOptions = DEFAULT_ADDONS, removalOptions = DEFAULT_REMOVALS, onClose }) {
   const { addItem, openCart } = useCart();
   const [selectedAddons, setSelectedAddons] = useState([]);
@@ -27,19 +42,27 @@ function ProductCustomizer({ product, addonsOptions = DEFAULT_ADDONS, removalOpt
   const [observation, setObservation] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [priceVariant, setPriceVariant] = useState("COMERCIAL");
+  const [manualPrice, setManualPrice] = useState(() =>
+    String(getProductPrice(product).toFixed(2)).replace(".", ","),
+  );
 
   const hasPriceVariants = Boolean(product?.hasPriceVariants);
+  const canEditPrice = isDiversosProduct(product);
+  const parsedManualPrice = parseMoneyInput(manualPrice);
+  const hasValidManualPrice =
+    canEditPrice && Number.isFinite(parsedManualPrice) && parsedManualPrice > 0;
   const selectedPriceVariant = hasPriceVariants ? priceVariant : null;
   const selectedPriceVariantLabel =
     PRICE_VARIANTS.find((variant) => variant.id === selectedPriceVariant)?.label ??
     "";
-  const basePrice = hasPriceVariants
+  const configuredBasePrice = hasPriceVariants
     ? Number(
         priceVariant === "PRATO_FEITO"
           ? product?.pratoFeitoPrice
           : product?.commercialPrice,
       )
     : getProductPrice(product);
+  const basePrice = hasValidManualPrice ? parsedManualPrice : configuredBasePrice;
 
   const addonsTotal = useMemo(
     () => selectedAddons.reduce((sum, addon) => sum + Number(addon.price || 0), 0),
@@ -67,6 +90,7 @@ function ProductCustomizer({ product, addonsOptions = DEFAULT_ADDONS, removalOpt
     const keyParts = [
       productId,
       selectedPriceVariant,
+      canEditPrice ? basePrice.toFixed(2) : "",
       selectedAddons.map((a) => a.id).sort().join("."),
       selectedRemovals.slice().sort().join("."),
       observation.trim(),
@@ -86,6 +110,7 @@ function ProductCustomizer({ product, addonsOptions = DEFAULT_ADDONS, removalOpt
       payload: {
         productId,
         priceVariant: selectedPriceVariant,
+        manualPrice: canEditPrice ? basePrice : undefined,
         addonIds: selectedAddons.map((a) => a.id),
         removedIngredients: selectedRemovals.join(", "),
       },
@@ -139,6 +164,39 @@ function ProductCustomizer({ product, addonsOptions = DEFAULT_ADDONS, removalOpt
                   </button>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {canEditPrice && (
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-secondary">
+              Preço do item
+            </label>
+            <div className="flex items-center rounded-lg border border-border-soft bg-accent/30 px-3 py-2 focus-within:border-secondary/50">
+              <span className="mr-2 text-sm font-bold text-secondary">R$</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={manualPrice}
+                onChange={(event) =>
+                  setManualPrice(
+                    event.target.value.replace(/[^\d,.]/g, "").slice(0, 10),
+                  )
+                }
+                onBlur={() => {
+                  if (hasValidManualPrice) {
+                    setManualPrice(
+                      parsedManualPrice.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }),
+                    );
+                  }
+                }}
+                placeholder="0,00"
+                className="w-full bg-transparent text-base font-semibold text-text-main outline-none placeholder:text-text-muted/50"
+              />
             </div>
           </div>
         )}
@@ -244,7 +302,7 @@ function ProductCustomizer({ product, addonsOptions = DEFAULT_ADDONS, removalOpt
         <button
           type="button"
           onClick={handleAddToCart}
-          disabled={!product?.id}
+          disabled={!product?.id || (canEditPrice && !hasValidManualPrice)}
           className="mt-4 w-full rounded-lg bg-primary px-5 py-3 text-sm font-bold text-white transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
         >
           Adicionar ao Pedido

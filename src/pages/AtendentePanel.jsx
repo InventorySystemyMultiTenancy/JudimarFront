@@ -63,6 +63,8 @@ const mapItemToApi = (item) => {
         (item.removals || []).join(", ") ||
         undefined,
       priceVariant: payload.priceVariant || item.priceVariant || undefined,
+      manualPrice:
+        payload.manualPrice != null ? Number(payload.manualPrice) : undefined,
       quantity: item.quantity,
       notes: item.observation || item.notes || undefined,
     };
