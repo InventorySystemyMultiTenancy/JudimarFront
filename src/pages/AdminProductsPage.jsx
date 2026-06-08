@@ -951,6 +951,7 @@ function AdminProductsPage() {
   const [modal, setModal] = useState(null); // null | "new" | product object
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  const [showWithoutPhotoOnly, setShowWithoutPhotoOnly] = useState(false);
 
   const {
     data: products = [],
@@ -980,16 +981,22 @@ function AdminProductsPage() {
       : products.filter(
           (product) => (product.category || "Geral") === selectedCategory,
         );
+  const photoFilteredProducts = showWithoutPhotoOnly
+    ? filteredProducts.filter((product) => !String(product.imageUrl ?? "").trim())
+    : filteredProducts;
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const visibleProducts = normalizedSearch
-    ? filteredProducts.filter((product) =>
+    ? photoFilteredProducts.filter((product) =>
         [product.name, product.description, product.category]
           .filter(Boolean)
           .some((value) =>
             String(value).toLowerCase().includes(normalizedSearch),
           ),
       )
-    : filteredProducts;
+    : photoFilteredProducts;
+  const withoutPhotoCount = products.filter(
+    (product) => !String(product.imageUrl ?? "").trim(),
+  ).length;
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-6 text-gray-900 sm:px-6">
@@ -1046,7 +1053,7 @@ function AdminProductsPage() {
               String(products.filter((p) => !p.isActive).length),
             )}
           </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(220px,280px)]">
+          <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,280px)_auto]">
             <div className="flex flex-col gap-2">
               <label className="text-xs uppercase tracking-widest text-smoke">
                 Buscar produto
@@ -1075,6 +1082,23 @@ function AdminProductsPage() {
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs uppercase tracking-widest text-smoke">
+                Foto
+              </label>
+              <label className="flex h-[46px] cursor-pointer items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-gold/40">
+                <input
+                  type="checkbox"
+                  checked={showWithoutPhotoOnly}
+                  onChange={(e) => setShowWithoutPhotoOnly(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-gold focus:ring-gold/40"
+                />
+                Sem foto
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+                  {withoutPhotoCount}
+                </span>
+              </label>
             </div>
           </div>
           <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
