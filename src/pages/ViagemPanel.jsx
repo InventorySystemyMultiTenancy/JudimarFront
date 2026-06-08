@@ -48,6 +48,23 @@ function buildMarmitaPayload(items) {
   };
 }
 
+function getCartItemManualObservation(item) {
+  const baseNotes = String(item?.payload?.baseNotes ?? item?.payload?.notes ?? "");
+  const observation = String(item?.observation ?? "");
+
+  if (!observation || observation === baseNotes) return "";
+  if (baseNotes && observation.startsWith(`${baseNotes} - `)) {
+    return observation.slice(baseNotes.length + 3);
+  }
+
+  return observation;
+}
+
+function buildCartItemObservation(item, manualObservation) {
+  const baseNotes = String(item?.payload?.baseNotes ?? item?.payload?.notes ?? "");
+  return [baseNotes, manualObservation.trim()].filter(Boolean).join(" - ");
+}
+
 function ProductButton({ product, onClick, disabled }) {
   const imageUrl = getProductImage(product);
 
@@ -88,6 +105,7 @@ export default function ViagemPanel() {
   const {
     items,
     addItem,
+    updateItem,
     updateQuantity,
     removeItem,
     clearCart,
@@ -188,6 +206,7 @@ export default function ViagemPanel() {
         productId: product.id,
         priceVariant: product.hasPriceVariants ? "PRATO_FEITO" : undefined,
         notes: "MARMITA",
+        baseNotes: "MARMITA",
         deliverImmediately: false,
       },
     });
@@ -204,6 +223,7 @@ export default function ViagemPanel() {
       payload: {
         productId: product.id,
         notes: "MARMITA - JA ENTREGUE",
+        baseNotes: "MARMITA - JA ENTREGUE",
         deliverImmediately: true,
       },
     });
@@ -223,6 +243,13 @@ export default function ViagemPanel() {
       return;
     }
     const observation = customObservation.trim();
+    const baseNotes = [
+      "MARMITA",
+      `DIVERSOS ${currency(total)}`,
+      sendDiversosToKitchen ? "" : "JA ENTREGUE",
+    ]
+      .filter(Boolean)
+      .join(" - ");
 
     addItem({
       key: [
@@ -235,18 +262,12 @@ export default function ViagemPanel() {
       nome: diversosProduct.name ?? "Diversos",
       price: total,
       quantity: 1,
-      observation: [
-        "MARMITA",
-        `DIVERSOS ${currency(total)}`,
-        observation,
-        sendDiversosToKitchen ? "" : "JA ENTREGUE",
-      ]
-        .filter(Boolean)
-        .join(" - "),
+      observation: [baseNotes, observation].filter(Boolean).join(" - "),
       payload: {
         productId: diversosProduct.id,
         manualPrice: total,
-        notes: ["MARMITA", observation].filter(Boolean).join(" - "),
+        notes: [baseNotes, observation].filter(Boolean).join(" - "),
+        baseNotes,
         deliverImmediately: !sendDiversosToKitchen,
       },
     });
@@ -260,6 +281,18 @@ export default function ViagemPanel() {
       return;
     }
     createOrder.mutate();
+  };
+
+  const updateCartItemObservation = (item, manualObservation) => {
+    const nextObservation = buildCartItemObservation(item, manualObservation);
+    updateItem(item.key, (current) => ({
+      ...current,
+      observation: nextObservation,
+      payload: {
+        ...current.payload,
+        notes: nextObservation,
+      },
+    }));
   };
 
   return (
@@ -389,6 +422,20 @@ export default function ViagemPanel() {
                   >
                     Remover
                   </button>
+                  <div className="basis-full">
+                    <label className="mb-1 block text-xs font-black uppercase tracking-widest text-orange-700">
+                      Observação para cozinha
+                    </label>
+                    <textarea
+                      value={getCartItemManualObservation(item)}
+                      onChange={(event) =>
+                        updateCartItemObservation(item, event.target.value)
+                      }
+                      placeholder="Ex: sem cebola, tirar tomate, molho separado..."
+                      rows={2}
+                      className="w-full resize-none rounded-2xl border border-orange-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-orange-500"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
