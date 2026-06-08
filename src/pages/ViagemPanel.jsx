@@ -5,6 +5,7 @@ import { useAuth } from "../hooks/useAuth.js";
 import { useCart } from "../context/CartContext.jsx";
 import { api } from "../lib/api.js";
 import {
+  isBebidasCategory,
   isViagemPanelProduct,
   isViagemProduct,
 } from "../lib/productVisibility.js";
@@ -78,7 +79,27 @@ export default function ViagemPanel() {
   const viagemProducts = useMemo(() => {
     const normalized = search.trim().toLowerCase();
     return products
-      .filter((product) => isViagemMenuProduct(product) && !isDiversosProduct(product))
+      .filter(
+        (product) =>
+          isViagemMenuProduct(product) &&
+          !isDiversosProduct(product) &&
+          !isBebidasCategory(product.category),
+      )
+      .filter((product) => {
+        if (!normalized) return true;
+        return `${product.name ?? ""} ${product.category ?? ""}`
+          .toLowerCase()
+          .includes(normalized);
+      });
+  }, [products, search]);
+
+  const bebidaProducts = useMemo(() => {
+    const normalized = search.trim().toLowerCase();
+    return products
+      .filter(
+        (product) =>
+          isViagemMenuProduct(product) && isBebidasCategory(product.category),
+      )
       .filter((product) => {
         if (!normalized) return true;
         return `${product.name ?? ""} ${product.category ?? ""}`
@@ -384,6 +405,54 @@ export default function ViagemPanel() {
               {!viagemProducts.length ? (
                 <div className="col-span-full rounded-2xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">
                   Nenhum produto da categoria Viagem encontrado.
+                </div>
+              ) : null}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-5 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="mb-4">
+            <h2 className="font-display text-2xl text-primary">Bebidas</h2>
+            <p className="mt-1 text-sm text-smoke">
+              Bebidas tambem entram no mesmo carrinho.
+            </p>
+          </div>
+
+          {isLoading ? (
+            <div className="rounded-2xl bg-gray-50 p-8 text-center text-sm font-bold text-gray-500">
+              Carregando bebidas...
+            </div>
+          ) : isError ? (
+            <div className="rounded-2xl bg-red-50 p-8 text-center text-sm font-bold text-red-600">
+              Nao foi possivel carregar as bebidas.
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {bebidaProducts.map((product) => (
+                <button
+                  key={product.id}
+                  type="button"
+                  onClick={() => addProductToCart(product)}
+                  disabled={createOrder.isPending}
+                  className="rounded-2xl border border-gray-200 bg-accent/60 p-4 text-left transition hover:border-orange-500 hover:bg-orange-50 disabled:opacity-50"
+                >
+                  <span className="block font-display text-xl text-primary">
+                    {product.name}
+                  </span>
+                  {product.category ? (
+                    <span className="mt-1 block text-xs font-bold uppercase tracking-widest text-gray-500">
+                      {product.category}
+                    </span>
+                  ) : null}
+                  <span className="mt-4 block text-lg font-black text-orange-600">
+                    {currency(getProductPrice(product))}
+                  </span>
+                </button>
+              ))}
+              {!bebidaProducts.length ? (
+                <div className="col-span-full rounded-2xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">
+                  Nenhuma bebida encontrada.
                 </div>
               ) : null}
             </div>
