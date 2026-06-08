@@ -5,7 +5,6 @@ import { useAuth } from "../hooks/useAuth.js";
 import { useCart } from "../context/CartContext.jsx";
 import { api } from "../lib/api.js";
 import {
-  isBebidasCategory,
   isViagemPanelProduct,
   isViagemProduct,
 } from "../lib/productVisibility.js";
@@ -33,6 +32,9 @@ const isDiversosProduct = (product) => normalize(product?.name).includes("divers
 
 const isViagemMenuProduct = (product) =>
   isViagemPanelProduct(product) && !product.isAddon && !product.waiterOnly;
+
+const isWaiterOnlyProduct = (product) =>
+  Boolean(product?.waiterOnly) && !product?.isAddon;
 
 function buildMarmitaPayload(items) {
   return {
@@ -82,8 +84,7 @@ export default function ViagemPanel() {
       .filter(
         (product) =>
           isViagemMenuProduct(product) &&
-          !isDiversosProduct(product) &&
-          !isBebidasCategory(product.category),
+          !isDiversosProduct(product),
       )
       .filter((product) => {
         if (!normalized) return true;
@@ -93,13 +94,10 @@ export default function ViagemPanel() {
       });
   }, [products, search]);
 
-  const bebidaProducts = useMemo(() => {
+  const waiterOnlyProducts = useMemo(() => {
     const normalized = search.trim().toLowerCase();
     return products
-      .filter(
-        (product) =>
-          isViagemMenuProduct(product) && isBebidasCategory(product.category),
-      )
+      .filter(isWaiterOnlyProduct)
       .filter((product) => {
         if (!normalized) return true;
         return `${product.name ?? ""} ${product.category ?? ""}`
@@ -151,6 +149,22 @@ export default function ViagemPanel() {
         priceVariant: product.hasPriceVariants ? "PRATO_FEITO" : undefined,
         notes: "MARMITA",
         deliverImmediately: false,
+      },
+    });
+  };
+
+  const addWaiterOnlyToCart = (product) => {
+    addItem({
+      key: `viagem-garcom-${product.id}`,
+      id: product.id,
+      nome: product.name,
+      price: getProductPrice(product),
+      quantity: 1,
+      observation: "MARMITA - JA ENTREGUE",
+      payload: {
+        productId: product.id,
+        notes: "MARMITA - JA ENTREGUE",
+        deliverImmediately: true,
       },
     });
   };
@@ -413,27 +427,27 @@ export default function ViagemPanel() {
 
         <section className="mt-5 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="mb-4">
-            <h2 className="font-display text-2xl text-primary">Bebidas</h2>
+            <h2 className="font-display text-2xl text-primary">Somente garçom</h2>
             <p className="mt-1 text-sm text-smoke">
-              Bebidas tambem entram no mesmo carrinho.
+              Itens desta seção entram no carrinho como já entregues.
             </p>
           </div>
 
           {isLoading ? (
             <div className="rounded-2xl bg-gray-50 p-8 text-center text-sm font-bold text-gray-500">
-              Carregando bebidas...
+              Carregando itens...
             </div>
           ) : isError ? (
             <div className="rounded-2xl bg-red-50 p-8 text-center text-sm font-bold text-red-600">
-              Nao foi possivel carregar as bebidas.
+              Nao foi possivel carregar os itens.
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {bebidaProducts.map((product) => (
+              {waiterOnlyProducts.map((product) => (
                 <button
                   key={product.id}
                   type="button"
-                  onClick={() => addProductToCart(product)}
+                  onClick={() => addWaiterOnlyToCart(product)}
                   disabled={createOrder.isPending}
                   className="rounded-2xl border border-gray-200 bg-accent/60 p-4 text-left transition hover:border-orange-500 hover:bg-orange-50 disabled:opacity-50"
                 >
@@ -450,9 +464,9 @@ export default function ViagemPanel() {
                   </span>
                 </button>
               ))}
-              {!bebidaProducts.length ? (
+              {!waiterOnlyProducts.length ? (
                 <div className="col-span-full rounded-2xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">
-                  Nenhuma bebida encontrada.
+                  Nenhum item somente garçom encontrado.
                 </div>
               ) : null}
             </div>
