@@ -5,6 +5,7 @@ import { useAuth } from "../hooks/useAuth.js";
 import { useCart } from "../context/CartContext.jsx";
 import { api } from "../lib/api.js";
 import {
+  isPorcoesCategory,
   isViagemPanelProduct,
   isViagemProduct,
 } from "../lib/productVisibility.js";
@@ -32,6 +33,8 @@ const isDiversosProduct = (product) => normalize(product?.name).includes("divers
 
 const isViagemMenuProduct = (product) =>
   isViagemPanelProduct(product) && !product.isAddon && !product.waiterOnly;
+
+const isPorcoesProduct = (product) => isPorcoesCategory(product?.category);
 
 const isWaiterOnlyProduct = (product) =>
   Boolean(product?.waiterOnly) && !product?.isAddon;
@@ -117,6 +120,7 @@ export default function ViagemPanel() {
   const [sendDiversosToKitchen, setSendDiversosToKitchen] = useState(true);
   const [search, setSearch] = useState("");
   const [waiterOnlySearch, setWaiterOnlySearch] = useState("");
+  const [showPorcoes, setShowPorcoes] = useState(false);
 
   useEffect(() => {
     setCartScope("viagem");
@@ -142,6 +146,7 @@ export default function ViagemPanel() {
       .filter(
         (product) =>
           isViagemMenuProduct(product) &&
+          !isPorcoesProduct(product) &&
           !isDiversosProduct(product),
       )
       .filter((product) => {
@@ -151,6 +156,19 @@ export default function ViagemPanel() {
           .includes(normalized);
       });
   }, [products, search]);
+
+  const porcoesProducts = useMemo(
+    () =>
+      products
+        .filter(
+          (product) =>
+            isViagemMenuProduct(product) &&
+            isPorcoesProduct(product) &&
+            !isDiversosProduct(product),
+        )
+        .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? ""), "pt-BR")),
+    [products],
+  );
 
   const waiterOnlyProducts = useMemo(() => {
     const normalized = waiterOnlySearch.trim().toLowerCase();
@@ -508,6 +526,41 @@ export default function ViagemPanel() {
             </div>
           )}
         </section>
+
+        {!isLoading && !isError && porcoesProducts.length ? (
+          <section className="mt-5 rounded-3xl border border-orange-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-2xl text-primary">Porções</h2>
+                <p className="mt-1 text-sm text-smoke">
+                  Ao clicar, a porção entra na cozinha como marmita.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPorcoes((value) => !value)}
+                className="rounded-2xl bg-orange-600 px-5 py-3 text-sm font-black uppercase text-white transition hover:bg-orange-700"
+              >
+                {showPorcoes
+                  ? "Ocultar porções"
+                  : `Mostrar porções (${porcoesProducts.length})`}
+              </button>
+            </div>
+
+            {showPorcoes ? (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {porcoesProducts.map((product) => (
+                  <ProductButton
+                    key={product.id}
+                    onClick={() => addProductToCart(product)}
+                    disabled={createOrder.isPending}
+                    product={product}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         <section className="mt-5 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
