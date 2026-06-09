@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api.js";
 import { isRegularProduct } from "../lib/productVisibility.js";
 import { useTranslation } from "../context/I18nContext.jsx";
-import ChamarGarcomButton from "../components/ChamarGarcomButton.jsx";
 
 const fmt = (value) =>
   Number(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -129,7 +128,7 @@ function MesaCardapioPage() {
         <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-800/80">
           {t(
             "MESA_CARDAPIO_DESCRIPTION",
-            "Acesse e veja os pratos disponíveis. Aqui não é possível adicionar ao carrinho — apenas visualizar e chamar o atendente.",
+            "Acesse e veja os pratos disponíveis. Aqui não é possível adicionar ao carrinho — apenas visualizar o cardápio.",
           )}
         </p>
       </div>
@@ -258,10 +257,6 @@ function MesaCardapioPage() {
           </div>
         </div>
       )}
-
-      <div className="fixed bottom-4 right-4 z-40">
-        <ChamarGarcomButton />
-      </div>
     </main>
   );
 }
