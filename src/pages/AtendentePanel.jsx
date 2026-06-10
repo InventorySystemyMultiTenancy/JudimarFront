@@ -410,22 +410,29 @@ export default function AtendentePanel() {
       : "";
   const notesKey = selectedTargetId ? `comanda_${selectedTargetId}` : "default";
 
+  const pendingTargetOrders = useMemo(
+    () =>
+      activeOrders.filter(
+        (order) =>
+          order.paymentStatus !== "APROVADO" && order.status !== "CANCELADO",
+      ),
+    [activeOrders],
+  );
+
   const pendingTargetTotal = useMemo(
     () =>
-      activeOrders
-        .filter(
-          (order) =>
-            order.paymentStatus !== "APROVADO" && order.status !== "CANCELADO",
-        )
-        .reduce((acc, order) => acc + Number(order.total ?? 0), 0),
-    [activeOrders],
+      pendingTargetOrders.reduce(
+        (acc, order) => acc + Number(order.total ?? 0),
+        0,
+      ),
+    [pendingTargetOrders],
   );
 
   const visibleTargetOrders = useMemo(
     () =>
       activeOrders.filter(
         (order) =>
-          !(order.status === "ENTREGUE" && order.paymentStatus === "APROVADO"),
+          order.paymentStatus !== "APROVADO" && order.status !== "CANCELADO",
       ),
     [activeOrders],
   );
@@ -563,22 +570,26 @@ export default function AtendentePanel() {
   });
 
   const markPaidMutation = useMutation({
-    mutationFn: async ({ orderId, paymentMethod }) => {
-      const res = await api.patch(`/orders/${orderId}/mark-paid`, {
-        paymentMethod,
-      });
-      return res.data;
+    mutationFn: async ({ orderIds, paymentMethod }) => {
+      const ids = Array.isArray(orderIds) ? orderIds : [orderIds].filter(Boolean);
+      return Promise.all(
+        ids.map((orderId) =>
+          api.patch(`/orders/${orderId}/mark-paid`, { paymentMethod }),
+        ),
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
       queryClient.invalidateQueries({ queryKey: ["atendente-mesa-orders"] });
       queryClient.invalidateQueries({ queryKey: ["atendente-comanda-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["caixa-pending-payments"] });
       queryClient.invalidateQueries({
         queryKey: ["atendente-mesa-open-totals"],
       });
       queryClient.invalidateQueries({
         queryKey: ["atendente-comanda-open-totals"],
       });
+      queryClient.invalidateQueries({ queryKey: ["comandas-open-totals"] });
       toast.success("Pagamento baixado.");
     },
     onError: (error) => {
@@ -653,13 +664,19 @@ export default function AtendentePanel() {
   );
 
   const handleMarkPaid = useCallback(
-    async (orderId) => {
+    async (orderIds, total = 0) => {
+      const ids = Array.isArray(orderIds) ? orderIds.filter(Boolean) : [orderIds].filter(Boolean);
+      if (!ids.length) return;
+
       const paymentMethod = await askPaymentMethod({
         title: "Dar baixa / pago",
-        text: "Escolha a forma de pagamento recebida.",
+        text:
+          ids.length > 1
+            ? `Baixar ${ids.length} pedidos em aberto (${currency(total)}).`
+            : "Escolha a forma de pagamento recebida.",
       });
       if (!paymentMethod) return;
-      markPaidMutation.mutate({ orderId, paymentMethod });
+      markPaidMutation.mutate({ orderIds: ids, paymentMethod });
     },
     [markPaidMutation],
   );
@@ -1236,8 +1253,25 @@ export default function AtendentePanel() {
                     Pedidos do dia da {targetLabel} pendentes, ainda não entregues ou agu, pagamento
                   </p>
                 </div>
-                <div className="rounded-2xl bg-accent px-3 py-2 text-xs text-gray-600">
-                  Em aberto: <strong>{currency(pendingTargetTotal)}</strong>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="rounded-2xl bg-accent px-3 py-2 text-xs text-gray-600">
+                    Em aberto: <strong>{currency(pendingTargetTotal)}</strong>
+                  </div>
+                  {pendingTargetOrders.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleMarkPaid(
+                          pendingTargetOrders.map((order) => order.id),
+                          pendingTargetTotal,
+                        )
+                      }
+                      disabled={markPaidMutation.isPending}
+                      className="rounded-2xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
+                    >
+                      Dar baixa tudo
+                    </button>
+                  ) : null}
                 </div>
               </div>
 
@@ -1337,11 +1371,13 @@ export default function AtendentePanel() {
                               </div>
                               <button
                                 type="button"
-                                onClick={() => handleMarkPaid(order.id)}
+                                onClick={() =>
+                                  handleMarkPaid(order.id, Number(order.total ?? 0))
+                                }
                                 disabled={markPaidMutation.isPending}
                                 className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
                               >
-                                Dar baixa / pago
+                                Dar baixa este pedido
                               </button>
                               <button
                                 type="button"
