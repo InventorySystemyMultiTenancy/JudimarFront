@@ -1371,16 +1371,6 @@ export default function AtendentePanel() {
                               </div>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  handleMarkPaid(order.id, Number(order.total ?? 0))
-                                }
-                                disabled={markPaidMutation.isPending}
-                                className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
-                              >
-                                Dar baixa este pedido
-                              </button>
-                              <button
-                                type="button"
                                 onClick={() => handleCancelOrder(order)}
                                 disabled={cancelOrderMutation.isPending}
                                 className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"

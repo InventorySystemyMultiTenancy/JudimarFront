@@ -389,6 +389,12 @@ export default function CaixaPage() {
     queryClient.invalidateQueries({ queryKey: ["caixa-pending-payments"] });
     queryClient.invalidateQueries({ queryKey: ["admin-orders-preview"] });
     queryClient.invalidateQueries({ queryKey: ["comandas-open-totals"] });
+    queryClient.invalidateQueries({
+      queryKey: ["atendente-comanda-open-totals"],
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["atendente-mesa-open-totals"],
+    });
     queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
     queryClient.invalidateQueries({ queryKey: ["atendente-comanda-orders"] });
   };
