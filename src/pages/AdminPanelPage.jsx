@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import EstimatedTimeBadge from "../components/EstimatedTimeBadge.jsx";
 import {
   getDesktopNotificationsEnabled,
@@ -9,6 +10,7 @@ import {
 } from "../lib/desktopNotifications.js";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api.js";
+import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
 import { compareOrdersByUrgency, getOrderEta } from "../lib/orderEta.js";
 import {
   clearStaffUnreadCount,
@@ -103,7 +105,7 @@ function printPendingOrder(order) {
   printWindow.document.close();
 }
 
-function PendingPaymentAdminItem({ order, t }) {
+function PendingPaymentAdminItem({ order, t, onMarkPaid, markPaidDisabled }) {
   const pendingCustomerName = getPendingCustomerName(order);
 
   return (
@@ -138,12 +140,23 @@ function PendingPaymentAdminItem({ order, t }) {
         >
           Imprimir
         </button>
+        {onMarkPaid ? (
+          <button
+            type="button"
+            onClick={() => onMarkPaid(order)}
+            disabled={markPaidDisabled}
+            className="rounded-lg bg-green-700 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-green-800 disabled:opacity-50"
+          >
+            Dar baixa
+          </button>
+        ) : null}
       </div>
     </li>
   );
 }
 
 function AdminPanelPage() {
+  const queryClient = useQueryClient();
   const { t } = useTranslation();
   const [now, setNow] = useState(() => Date.now());
   const [unreadCount, setUnreadCount] = useState(() => getStaffUnreadCount());
@@ -185,9 +198,49 @@ function AdminPanelPage() {
   const pendingPaymentOrders = useMemo(() => {
     return pendingPaymentData.filter(
       (order) =>
-        order.paymentStatus !== "APROVADO" && order.status !== "CANCELADO",
+        order.paymentStatus !== "APROVADO" &&
+        order.status !== "CANCELADO" &&
+        order.paymentMethod !== "PENDENTE",
     );
   }, [pendingPaymentData]);
+
+  const savedPendingPaymentOrders = useMemo(() => {
+    return pendingPaymentData.filter(
+      (order) =>
+        order.paymentStatus !== "APROVADO" &&
+        order.status !== "CANCELADO" &&
+        order.paymentMethod === "PENDENTE",
+    );
+  }, [pendingPaymentData]);
+
+  const markSavedPendingPaid = useMutation({
+    mutationFn: ({ orderId, paymentMethod }) =>
+      api.patch(`/orders/${orderId}/mark-paid`, { paymentMethod }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["caixa-pending-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-orders-preview"] });
+      toast.success("Pagamento baixado.");
+    },
+    onError: (error) =>
+      toast.error(
+        error?.response?.data?.error?.message ?? "Erro ao baixar pagamento.",
+      ),
+  });
+
+  const handleMarkSavedPendingPaid = async (order) => {
+    const paymentMethod = await askPaymentMethod({
+      title: "Dar baixa no pendente",
+      text: `Total recebido: ${currency(order.total)}`,
+      confirmButtonText: "Dar baixa",
+    });
+
+    if (!paymentMethod) return;
+
+    markSavedPendingPaid.mutate({
+      orderId: order.id,
+      paymentMethod,
+    });
+  };
 
   const prioritizedOrders = useMemo(
     () =>
@@ -644,6 +697,35 @@ function AdminPanelPage() {
                   "ADMIN_PANEL_NO_PENDING_PAYMENTS_JUDIMAR",
                   "Nenhum pagamento pendente.",
                 )}
+              </li>
+            ) : null}
+          </ul>
+        </section>
+
+        <section className="rounded-3xl border border-green-500/30 bg-lacquer/70 p-4 sm:p-6 lg:col-span-2">
+          <div className="flex items-center gap-2">
+            <h2 className="font-display text-xl text-green-700">
+              Pagamentos salvos como pendentes
+            </h2>
+            {savedPendingPaymentOrders.length > 0 && (
+              <span className="rounded-full bg-green-700 px-2 py-0.5 text-xs font-bold text-white">
+                {savedPendingPaymentOrders.length}
+              </span>
+            )}
+          </div>
+          <ul className="mt-4 grid gap-3 md:grid-cols-2">
+            {savedPendingPaymentOrders.map((order) => (
+              <PendingPaymentAdminItem
+                key={order.id}
+                order={order}
+                t={t}
+                onMarkPaid={handleMarkSavedPendingPaid}
+                markPaidDisabled={markSavedPendingPaid.isPending}
+              />
+            ))}
+            {!savedPendingPaymentOrders.length && !isLoading ? (
+              <li className="text-sm text-smoke md:col-span-2">
+                Nenhum pagamento salvo como pendente.
               </li>
             ) : null}
           </ul>

@@ -379,6 +379,11 @@ export default function CaixaPage() {
     refetchInterval: 20_000,
   });
 
+  const cashierOrders = useMemo(
+    () => orders.filter((order) => order.paymentMethod !== "PENDENTE"),
+    [orders],
+  );
+
   const { data: products = [] } = useQuery({
     queryKey: ["caixa-products"],
     queryFn: async () =>
@@ -502,17 +507,17 @@ export default function CaixaPage() {
   });
 
   const totals = useMemo(() => {
-    const pendingTotal = orders.reduce(
+    const pendingTotal = cashierOrders.reduce(
       (sum, order) => sum + Number(order.total ?? 0),
       0,
     );
-    return { count: orders.length, pendingTotal };
-  }, [orders]);
+    return { count: cashierOrders.length, pendingTotal };
+  }, [cashierOrders]);
 
   const filteredOrders = useMemo(() => {
     const normalizedComandaSearch = comandaSearch.trim().toLowerCase();
 
-    const filtered = orders.filter((order) => {
+    const filtered = cashierOrders.filter((order) => {
       const matchesOrigin =
         originFilter === "TODOS" || getOrigin(order).type === originFilter;
 
@@ -527,7 +532,7 @@ export default function CaixaPage() {
     });
 
     return groupPendingOrdersByComanda(filtered);
-  }, [comandaSearch, orders, originFilter]);
+  }, [cashierOrders, comandaSearch, originFilter]);
 
   const handleToggleItem = (itemId) => {
     setSelectedItemIds((current) => {
