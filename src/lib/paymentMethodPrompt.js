@@ -13,12 +13,18 @@ export async function askPaymentMethod({
   text = "Escolha como o cliente pagou.",
   confirmButtonText = "Confirmar pagamento",
   cancelButtonText = "Cancelar",
+  includePending = false,
+  returnDetails = false,
 } = {}) {
+  const inputOptions = includePending
+    ? { ...PAYMENT_METHOD_OPTIONS, PENDENTE: "Pendente" }
+    : PAYMENT_METHOD_OPTIONS;
+
   const result = await Swal.fire({
     title,
     text,
     input: "radio",
-    inputOptions: PAYMENT_METHOD_OPTIONS,
+    inputOptions,
     inputValidator: (value) =>
       value ? undefined : "Selecione a forma de pagamento.",
     showCancelButton: true,
@@ -27,5 +33,29 @@ export async function askPaymentMethod({
     confirmButtonColor: "#0f172a",
   });
 
-  return result.isConfirmed ? result.value : null;
+  if (!result.isConfirmed) return null;
+
+  if (result.value !== "PENDENTE") {
+    return returnDetails ? { paymentMethod: result.value } : result.value;
+  }
+
+  const customerResult = await Swal.fire({
+    title: "Pagamento pendente",
+    text: "Informe o nome do cliente.",
+    input: "text",
+    inputPlaceholder: "Nome do cliente",
+    inputValidator: (value) =>
+      value?.trim() ? undefined : "Informe o nome do cliente.",
+    showCancelButton: true,
+    confirmButtonText: "Salvar pendente",
+    cancelButtonText,
+    confirmButtonColor: "#0f172a",
+  });
+
+  if (!customerResult.isConfirmed) return null;
+
+  const pendingCustomerName = customerResult.value.trim();
+  return returnDetails
+    ? { paymentMethod: "PENDENTE", pendingCustomerName }
+    : "PENDENTE";
 }

@@ -25,6 +25,124 @@ import {
 const currency = (v) =>
   Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+const formatDateTime = (value) =>
+  value
+    ? new Date(value).toLocaleString("pt-BR", {
+        dateStyle: "short",
+        timeStyle: "short",
+      })
+    : "-";
+
+function getPendingCustomerName(order) {
+  return order.payment?.payload?.pendingCustomerName ?? "";
+}
+
+function getOrderOriginLabel(order) {
+  if (order.mesa) return order.mesa.name ?? `Mesa ${order.mesa.number ?? ""}`;
+  if (order.comanda) return `Comanda ${order.comanda.number}`;
+  if (order.isPickup) return "Retirada";
+  if (order.deliveryAddress) return "Entrega";
+  return "Pedido";
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function printPendingOrder(order) {
+  const printWindow = window.open("", "_blank", "width=420,height=640");
+  if (!printWindow) return;
+
+  const customerName =
+    getPendingCustomerName(order) ||
+    order.user?.name ||
+    order.comanda?.name ||
+    getOrderOriginLabel(order);
+  const itemsHtml = (order.items ?? [])
+    .map(
+      (item) => `
+        <tr>
+          <td>${escapeHtml(item.quantity)}x ${escapeHtml(
+            item.product?.name ?? item.productName ?? "Item",
+          )}</td>
+          <td style="text-align:right">${currency(item.totalPrice)}</td>
+        </tr>
+      `,
+    )
+    .join("");
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Pagamento pendente</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 18px; color: #111827; }
+          h1 { font-size: 20px; margin: 0 0 8px; }
+          p { margin: 4px 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+          td { border-bottom: 1px solid #e5e7eb; padding: 7px 0; font-size: 13px; }
+          .total { margin-top: 16px; font-size: 20px; font-weight: 800; text-align: right; }
+          .meta { font-size: 12px; color: #4b5563; }
+        </style>
+      </head>
+      <body onload="window.print()">
+        <h1>Pagamento pendente</h1>
+        <p><strong>Cliente:</strong> ${escapeHtml(customerName)}</p>
+        <p><strong>Origem:</strong> ${escapeHtml(getOrderOriginLabel(order))}</p>
+        <p class="meta">Pedido #${order.id.slice(-6).toUpperCase()} - ${formatDateTime(order.createdAt)}</p>
+        <table><tbody>${itemsHtml}</tbody></table>
+        <div class="total">${currency(order.total)}</div>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
+function PendingPaymentAdminItem({ order, t }) {
+  const pendingCustomerName = getPendingCustomerName(order);
+
+  return (
+    <li className="rounded-xl border border-amber-400/40 bg-amber-50 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold text-amber-800">
+            {pendingCustomerName || getOrderOriginLabel(order)}
+          </p>
+          {pendingCustomerName ? (
+            <p className="mt-0.5 text-xs font-semibold text-amber-700">
+              {getOrderOriginLabel(order)}
+            </p>
+          ) : null}
+        </div>
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+          {currency(order.total)}
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-amber-700">
+          #{order.id.slice(-6).toUpperCase()} ·{" "}
+          {t(
+            `PAYMENT_STATUS_${order.paymentStatus ?? "PENDENTE"}`,
+            order.paymentStatus ?? "PENDENTE",
+          )}
+        </p>
+        <button
+          type="button"
+          onClick={() => printPendingOrder(order)}
+          className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-amber-700"
+        >
+          Imprimir
+        </button>
+      </div>
+    </li>
+  );
+}
+
 function AdminPanelPage() {
   const { t } = useTranslation();
   const [now, setNow] = useState(() => Date.now());
@@ -55,18 +173,21 @@ function AdminPanelPage() {
     },
   });
 
+  const { data: pendingPaymentData = [] } = useQuery({
+    queryKey: ["caixa-pending-payments"],
+    queryFn: async () =>
+      (await api.get("/orders/pending-payments")).data?.data ?? [],
+  });
+
   const currentNow = useMemo(() => new Date(now), [now]);
 
-  // Mesas e comandas com pagamento pendente (derivado da mesma query)
+  // Pagamentos pendentes com detalhes para o painel administrativo.
   const pendingPaymentOrders = useMemo(() => {
-    if (!data) return [];
-    return data.filter(
-      (o) =>
-        (o.mesaId || o.comandaId) &&
-        o.paymentStatus !== "APROVADO" &&
-        o.status !== "CANCELADO",
+    return pendingPaymentData.filter(
+      (order) =>
+        order.paymentStatus !== "APROVADO" && order.status !== "CANCELADO",
     );
-  }, [data]);
+  }, [pendingPaymentData]);
 
   const prioritizedOrders = useMemo(
     () =>
@@ -515,37 +636,13 @@ function AdminPanelPage() {
           </div>
           <ul className="mt-4 space-y-3 text-sm">
             {pendingPaymentOrders.map((order) => (
-              <li
-                key={order.id}
-                className="rounded-xl border border-amber-400/40 bg-amber-50 p-3"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-semibold text-amber-800">
-                    {order.mesa
-                      ? (order.mesa.name ??
-                        t("ADMIN_PANEL_MESA_LABEL_JUDIMAR", "Mesa"))
-                      : order.comanda
-                        ? `Comanda ${order.comanda.number}`
-                        : "Comanda"}
-                  </p>
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                    {currency(order.total)}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-amber-700">
-                  #{order.id.slice(-6).toUpperCase()} ·{" "}
-                  {t(
-                    `PAYMENT_STATUS_${order.paymentStatus ?? "PENDENTE"}`,
-                    order.paymentStatus ?? "PENDENTE",
-                  )}
-                </p>
-              </li>
+              <PendingPaymentAdminItem key={order.id} order={order} t={t} />
             ))}
             {!pendingPaymentOrders.length && !isLoading ? (
               <li className="text-sm text-smoke">
                 {t(
                   "ADMIN_PANEL_NO_PENDING_PAYMENTS_JUDIMAR",
-                  "Nenhuma mesa ou comanda com pagamento pendente.",
+                  "Nenhum pagamento pendente.",
                 )}
               </li>
             ) : null}

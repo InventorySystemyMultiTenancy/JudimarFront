@@ -435,6 +435,28 @@ export default function CaixaPage() {
       ),
   });
 
+  const markPending = useMutation({
+    mutationFn: async ({ orderIds, pendingCustomerName }) =>
+      Promise.all(
+        orderIds.map((orderId) =>
+          api.patch(`/orders/${orderId}/payment-status`, {
+            paymentStatus: "PENDENTE",
+            paymentMethod: "PENDENTE",
+            pendingCustomerName,
+          }),
+        ),
+      ),
+    onSuccess: () => {
+      invalidatePaymentViews();
+      toast.success("Pagamento pendente salvo.");
+    },
+    onError: (error) =>
+      toast.error(
+        error?.response?.data?.error?.message ??
+          "Erro ao salvar pagamento pendente.",
+      ),
+  });
+
   const updateTotal = useMutation({
     mutationFn: ({ orderId, total }) =>
       api.patch(`/orders/${orderId}/total`, { total }),
@@ -527,13 +549,25 @@ export default function CaixaPage() {
       (sum, item) => sum + Number(item.totalPrice ?? 0),
       0,
     );
-    const paymentMethod = await askPaymentMethod({
+    const paymentDetails = await askPaymentMethod({
       title: `Baixar ${getOrigin(order).title}`,
       text: `Total em aberto: ${currency(
         selectedItems.length ? selectedTotal : order.total,
       )}`,
+      includePending: true,
+      returnDetails: true,
     });
-    if (paymentMethod) {
+    if (paymentDetails) {
+      const { paymentMethod, pendingCustomerName } = paymentDetails;
+
+      if (paymentMethod === "PENDENTE") {
+        markPending.mutate({
+          orderIds: order.orderIds ?? [order.id],
+          pendingCustomerName,
+        });
+        return;
+      }
+
       if (selectedItems.length) {
         const groups = new Map();
         selectedItems.forEach((item) => {
@@ -724,7 +758,7 @@ export default function CaixaPage() {
                 onStopTotalEdit={() => setActiveTotalEditorId(null)}
                 disabled={
                   markPaid.isPending || updateTotal.isPending || addItem.isPending
-                  || removeItem.isPending
+                  || removeItem.isPending || markPending.isPending
                 }
                 updatingTotal={updateTotal.isPending}
                 addingItem={addItem.isPending}
