@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import EstimatedTimeBadge from "../components/EstimatedTimeBadge.jsx";
 import {
   getDesktopNotificationsEnabled,
@@ -141,7 +142,14 @@ function printPendingOrder(order) {
   printWindow.document.close();
 }
 
-function PendingPaymentAdminItem({ order, t, onMarkPaid, markPaidDisabled }) {
+function PendingPaymentAdminItem({
+  order,
+  t,
+  onEditName,
+  editNameDisabled,
+  onMarkPaid,
+  markPaidDisabled,
+}) {
   const pendingCustomerName = getPendingCustomerName(order);
 
   return (
@@ -174,23 +182,35 @@ function PendingPaymentAdminItem({ order, t, onMarkPaid, markPaidDisabled }) {
             order.paymentStatus ?? "PENDENTE",
           )}
         </p>
-        <button
-          type="button"
-          onClick={() => printPendingOrder(order)}
-          className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-amber-700"
-        >
-          Imprimir
-        </button>
-        {onMarkPaid ? (
+        <div className="flex flex-wrap gap-2">
+          {onEditName ? (
+            <button
+              type="button"
+              onClick={() => onEditName(order)}
+              disabled={editNameDisabled}
+              className="rounded-lg border border-amber-600 bg-white px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
+            >
+              Editar nome
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={() => onMarkPaid(order)}
-            disabled={markPaidDisabled}
-            className="rounded-lg bg-green-700 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-green-800 disabled:opacity-50"
+            onClick={() => printPendingOrder(order)}
+            className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-amber-700"
           >
-            Dar baixa
+            Imprimir
           </button>
-        ) : null}
+          {onMarkPaid ? (
+            <button
+              type="button"
+              onClick={() => onMarkPaid(order)}
+              disabled={markPaidDisabled}
+              className="rounded-lg bg-green-700 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-green-800 disabled:opacity-50"
+            >
+              Dar baixa
+            </button>
+          ) : null}
+        </div>
       </div>
     </li>
   );
@@ -273,6 +293,56 @@ function AdminPanelPage() {
         error?.response?.data?.error?.message ?? "Erro ao baixar pagamento.",
       ),
   });
+
+  const editSavedPendingName = useMutation({
+    mutationFn: ({ orderIds, pendingCustomerName }) =>
+      Promise.all(
+        orderIds.map((orderId) =>
+          api.patch(`/orders/${orderId}/payment-status`, {
+            paymentStatus: "PENDENTE",
+            paymentMethod: "PENDENTE",
+            pendingCustomerName,
+          }),
+        ),
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["caixa-pending-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-orders-preview"] });
+      toast.success("Nome atualizado. Os pedidos com o mesmo nome foram agrupados.");
+    },
+    onError: (error) =>
+      toast.error(
+        error?.response?.data?.error?.message ??
+          "Erro ao atualizar o nome do cliente.",
+      ),
+  });
+
+  const handleEditSavedPendingName = async (order) => {
+    const currentName = getPendingCustomerName(order);
+    const result = await Swal.fire({
+      title: "Editar nome do cliente",
+      text: "Use exatamente o mesmo nome para juntar os pedidos.",
+      input: "text",
+      inputValue: currentName,
+      inputPlaceholder: "Nome do cliente",
+      inputValidator: (value) =>
+        value?.trim() ? undefined : "Informe o nome do cliente.",
+      showCancelButton: true,
+      confirmButtonText: "Salvar nome",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#15803d",
+    });
+
+    if (!result.isConfirmed) return;
+
+    const pendingCustomerName = result.value.trim();
+    if (pendingCustomerName === currentName.trim()) return;
+
+    editSavedPendingName.mutate({
+      orderIds: (order.orders ?? [order]).map((entry) => entry.id),
+      pendingCustomerName,
+    });
+  };
 
   const handleMarkSavedPendingPaid = async (order) => {
     const paymentMethod = await askPaymentMethod({
@@ -766,6 +836,8 @@ function AdminPanelPage() {
                 key={order.id}
                 order={order}
                 t={t}
+                onEditName={handleEditSavedPendingName}
+                editNameDisabled={editSavedPendingName.isPending}
                 onMarkPaid={handleMarkSavedPendingPaid}
                 markPaidDisabled={markSavedPendingPaid.isPending}
               />
