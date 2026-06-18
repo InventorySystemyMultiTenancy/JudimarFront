@@ -41,6 +41,11 @@ const currency = (value) =>
 
 const isValidEntityId = (value) => String(value || "").trim().length > 0;
 
+const isOpenForAttendant = (order) =>
+  order.paymentStatus !== "APROVADO" &&
+  order.paymentMethod !== "PENDENTE" &&
+  order.status !== "CANCELADO";
+
 const createClientRequestId = () => {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
@@ -411,11 +416,7 @@ export default function AtendentePanel() {
   const notesKey = selectedTargetId ? `comanda_${selectedTargetId}` : "default";
 
   const pendingTargetOrders = useMemo(
-    () =>
-      activeOrders.filter(
-        (order) =>
-          order.paymentStatus !== "APROVADO" && order.status !== "CANCELADO",
-      ),
+    () => activeOrders.filter(isOpenForAttendant),
     [activeOrders],
   );
 
@@ -429,11 +430,7 @@ export default function AtendentePanel() {
   );
 
   const visibleTargetOrders = useMemo(
-    () =>
-      activeOrders.filter(
-        (order) =>
-          order.paymentStatus !== "APROVADO" && order.status !== "CANCELADO",
-      ),
+    () => activeOrders.filter(isOpenForAttendant),
     [activeOrders],
   );
 
