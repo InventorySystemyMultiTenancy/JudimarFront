@@ -36,10 +36,39 @@ const formatDateTime = (value) =>
     : "-";
 
 function getPendingCustomerName(order) {
-  return order.payment?.payload?.pendingCustomerName ?? "";
+  return order.customerName ?? order.payment?.payload?.pendingCustomerName ?? "";
+}
+
+function groupSavedPendingPayments(orders) {
+  const groups = new Map();
+
+  for (const order of orders) {
+    const customerName = getPendingCustomerName(order).trim();
+    const key = customerName
+      ? customerName.toLocaleLowerCase("pt-BR").replace(/\s+/g, " ")
+      : `order:${order.id}`;
+    const group = groups.get(key) ?? {
+      id: order.id,
+      customerName,
+      orders: [],
+      total: 0,
+      paymentStatus: order.paymentStatus,
+    };
+
+    group.orders.push(order);
+    group.total += Number(order.total ?? 0);
+    groups.set(key, group);
+  }
+
+  return [...groups.values()];
 }
 
 function getOrderOriginLabel(order) {
+  if (order.orders) {
+    return [
+      ...new Set(order.orders.map((entry) => getOrderOriginLabel(entry))),
+    ].join(", ");
+  }
   if (order.mesa) return order.mesa.name ?? `Mesa ${order.mesa.number ?? ""}`;
   if (order.comanda) return `Comanda ${order.comanda.number}`;
   if (order.isPickup) return "Retirada";
@@ -60,12 +89,19 @@ function printPendingOrder(order) {
   const printWindow = window.open("", "_blank", "width=420,height=640");
   if (!printWindow) return;
 
+  const groupedOrders = order.orders ?? [order];
+  const firstOrder = groupedOrders[0] ?? order;
   const customerName =
-    getPendingCustomerName(order) ||
-    order.user?.name ||
-    order.comanda?.name ||
-    getOrderOriginLabel(order);
-  const itemsHtml = (order.items ?? [])
+    order.customerName ||
+    getPendingCustomerName(firstOrder) ||
+    firstOrder.user?.name ||
+    firstOrder.comanda?.name ||
+    getOrderOriginLabel(firstOrder);
+  const origins = [
+    ...new Set(groupedOrders.map((entry) => getOrderOriginLabel(entry))),
+  ].join(", ");
+  const itemsHtml = groupedOrders
+    .flatMap((entry) => entry.items ?? [])
     .map(
       (item) => `
         <tr>
@@ -95,8 +131,8 @@ function printPendingOrder(order) {
       <body onload="window.print()">
         <h1>Pagamento pendente</h1>
         <p><strong>Cliente:</strong> ${escapeHtml(customerName)}</p>
-        <p><strong>Origem:</strong> ${escapeHtml(getOrderOriginLabel(order))}</p>
-        <p class="meta">Pedido #${order.id.slice(-6).toUpperCase()} - ${formatDateTime(order.createdAt)}</p>
+        <p><strong>Origem:</strong> ${escapeHtml(origins)}</p>
+        <p class="meta">${groupedOrders.length} pedido(s) - ${formatDateTime(firstOrder.createdAt)}</p>
         <table><tbody>${itemsHtml}</tbody></table>
         <div class="total">${currency(order.total)}</div>
       </body>
@@ -118,6 +154,11 @@ function PendingPaymentAdminItem({ order, t, onMarkPaid, markPaidDisabled }) {
           {pendingCustomerName ? (
             <p className="mt-0.5 text-xs font-semibold text-amber-700">
               {getOrderOriginLabel(order)}
+            </p>
+          ) : null}
+          {order.orders?.length > 1 ? (
+            <p className="mt-0.5 text-xs text-amber-700">
+              {order.orders.length} pedidos agrupados
             </p>
           ) : null}
         </div>
@@ -205,17 +246,23 @@ function AdminPanelPage() {
   }, [pendingPaymentData]);
 
   const savedPendingPaymentOrders = useMemo(() => {
-    return pendingPaymentData.filter(
-      (order) =>
-        order.paymentStatus !== "APROVADO" &&
-        order.status !== "CANCELADO" &&
-        order.paymentMethod === "PENDENTE",
+    return groupSavedPendingPayments(
+      pendingPaymentData.filter(
+        (order) =>
+          order.paymentStatus !== "APROVADO" &&
+          order.status !== "CANCELADO" &&
+          order.paymentMethod === "PENDENTE",
+      ),
     );
   }, [pendingPaymentData]);
 
   const markSavedPendingPaid = useMutation({
-    mutationFn: ({ orderId, paymentMethod }) =>
-      api.patch(`/orders/${orderId}/mark-paid`, { paymentMethod }),
+    mutationFn: ({ orderIds, paymentMethod }) =>
+      Promise.all(
+        orderIds.map((orderId) =>
+          api.patch(`/orders/${orderId}/mark-paid`, { paymentMethod }),
+        ),
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["caixa-pending-payments"] });
       queryClient.invalidateQueries({ queryKey: ["admin-orders-preview"] });
@@ -237,7 +284,7 @@ function AdminPanelPage() {
     if (!paymentMethod) return;
 
     markSavedPendingPaid.mutate({
-      orderId: order.id,
+      orderIds: (order.orders ?? [order]).map((entry) => entry.id),
       paymentMethod,
     });
   };

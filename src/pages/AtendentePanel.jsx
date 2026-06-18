@@ -1018,6 +1018,8 @@ export default function AtendentePanel() {
                     active: 0,
                     pending: 0,
                   };
+                  const activeCount =
+                    Number(stats.pending) > 0 ? Number(stats.active) : 0;
                   const isSelected = comanda.id === selectedComandaTargetId;
 
                   return (
@@ -1052,7 +1054,7 @@ export default function AtendentePanel() {
                             Comanda {comanda.number}
                           </p>
                         </div>
-                        {stats.active ? (
+                        {activeCount > 0 ? (
                           <span
                             className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
                               isSelected
@@ -1060,7 +1062,7 @@ export default function AtendentePanel() {
                                 : "bg-primary text-white"
                             }`}
                           >
-                            {stats.active} ativos
+                            {activeCount} ativos
                           </span>
                         ) : null}
                       </div>
