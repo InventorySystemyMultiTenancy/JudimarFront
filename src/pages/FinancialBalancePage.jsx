@@ -98,6 +98,31 @@ function MoneyInput({ id, label, hint, value, onChange }) {
   );
 }
 
+function ReadOnlyMoney({ label, hint, value, loading }) {
+  return (
+    <div>
+      <span className="text-sm font-semibold text-primary">{label}</span>
+      {hint ? <span className="ml-2 text-xs text-smoke">{hint}</span> : null}
+      <div className="mt-2 flex overflow-hidden rounded-xl border border-green-200 bg-green-50">
+        <span className="flex items-center border-r border-green-200 px-3 text-sm font-semibold text-green-800">
+          R$
+        </span>
+        <div className="min-w-0 flex-1 px-3 py-2.5 text-right text-sm font-bold text-green-800">
+          {loading
+            ? "Carregando..."
+            : numberValue(value).toLocaleString("pt-BR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+        </div>
+      </div>
+      <p className="mt-1 text-[11px] text-green-700">
+        Calculado automaticamente pelos pedidos pagos do período.
+      </p>
+    </div>
+  );
+}
+
 function SummaryCard({ title, value, description, tone }) {
   const tones = {
     green: "border-green-200 bg-green-50 text-green-800",
@@ -198,7 +223,13 @@ function FinancialBalancePage() {
     },
   });
 
-  const values = drafts[balanceKey] ?? toFormValues(savedBalance);
+  const values = useMemo(
+    () => ({
+      ...(drafts[balanceKey] ?? toFormValues(savedBalance)),
+      grossRevenue: savedBalance?.grossRevenue ?? 0,
+    }),
+    [balanceKey, drafts, savedBalance],
+  );
 
   const saveBalance = useMutation({
     mutationFn: async (payload) =>
@@ -222,12 +253,15 @@ function FinancialBalancePage() {
   const deleteBalance = useMutation({
     mutationFn: async () =>
       api.delete("/admin/balances/monthly", { params: { month, year } }),
-    onSuccess: () => {
-      queryClient.setQueryData(["monthly-balance", month, year], null);
-      setDrafts((current) => ({
-        ...current,
-        [balanceKey]: INITIAL_VALUES,
-      }));
+    onSuccess: async () => {
+      setDrafts((current) => {
+        const next = { ...current };
+        delete next[balanceKey];
+        return next;
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["monthly-balance", month, year],
+      });
       toast.success("Balanço removido do banco.");
     },
     onError: (mutationError) =>
@@ -466,16 +500,15 @@ function FinancialBalancePage() {
             <div>
               <h2 className="font-display text-xl">1. Receita e deduções</h2>
               <p className="mt-1 text-xs text-smoke">
-                Informe o faturamento total e tudo que foi descontado dele.
+                O faturamento vem dos pedidos pagos. Informe apenas as deduções.
               </p>
             </div>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <MoneyInput
-                id="grossRevenue"
+              <ReadOnlyMoney
                 label="Faturamento bruto"
                 hint="Balcão, mesas, delivery e apps"
                 value={values.grossRevenue}
-                onChange={(value) => updateValue("grossRevenue", value)}
+                loading={isLoading}
               />
               <MoneyInput
                 id="cardFees"

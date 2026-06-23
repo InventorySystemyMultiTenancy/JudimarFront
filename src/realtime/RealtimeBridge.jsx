@@ -24,6 +24,7 @@ function getSocketUrl() {
 function invalidateAdminQueries(queryClient) {
   queryClient.invalidateQueries({ queryKey: ["admin-orders-preview"] });
   queryClient.invalidateQueries({ queryKey: ["admin-sales-analytics"] });
+  queryClient.invalidateQueries({ queryKey: ["monthly-balance"] });
   queryClient.invalidateQueries({ queryKey: ["caixa-pending-payments"] });
   queryClient.invalidateQueries({ queryKey: ["comandas-open-totals"] });
   queryClient.invalidateQueries({ queryKey: ["atendente-orders"] });
