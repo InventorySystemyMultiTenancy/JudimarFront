@@ -24,6 +24,7 @@ import AdminMesaCardapioPage from "./pages/AdminMesaCardapioPage.jsx";
 import ComandasPage from "./pages/ComandasPage.jsx";
 import ComandaSummaryPage from "./pages/ComandaSummaryPage.jsx";
 import CaixaPage from "./pages/CaixaPage.jsx";
+import FinancialBalancePage from "./pages/FinancialBalancePage.jsx";
 import PrivateRoute from "./routes/PrivateRoute.js";
 
 function AppRoutes() {
@@ -105,6 +106,7 @@ function AppRoutes() {
         <Route path="/admin/produtos" element={<AdminProductsHubPage />} />
         <Route path="/admin/produtos/lista" element={<AdminProductsPage />} />
         <Route path="/admin/vendas" element={<SalesAnalyticsPage />} />
+        <Route path="/admin/balanco" element={<FinancialBalancePage />} />
         <Route path="/admin/historico" element={<AdminOrderHistoryPage />} />
         <Route path="/admin/usuarios" element={<AdminUsersPage />} />
         <Route path="/admin/mesas" element={<AdminMesasPage />} />
