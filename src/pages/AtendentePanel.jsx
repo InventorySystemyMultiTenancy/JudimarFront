@@ -7,6 +7,7 @@ import ProductCustomizer from "../components/ProductCustomizer.jsx";
 import { useCart } from "../context/CartContext.jsx";
 import { useAuth } from "../hooks/useAuth.js";
 import { api } from "../lib/api.js";
+import { markOrdersPaid } from "../lib/markOrdersPaid.js";
 import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
 import { isRegularProduct } from "../lib/productVisibility.js";
 import {
@@ -569,10 +570,9 @@ export default function AtendentePanel() {
   const markPaidMutation = useMutation({
     mutationFn: async ({ orderIds, paymentMethod }) => {
       const ids = Array.isArray(orderIds) ? orderIds : [orderIds].filter(Boolean);
-      return Promise.all(
-        ids.map((orderId) =>
-          api.patch(`/orders/${orderId}/mark-paid`, { paymentMethod }),
-        ),
+      return markOrdersPaid(
+        ids.map((orderId) => ({ orderId })),
+        paymentMethod,
       );
     },
     onSuccess: () => {

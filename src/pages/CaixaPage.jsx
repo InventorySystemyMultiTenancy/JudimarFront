@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { api } from "../lib/api.js";
+import { markOrdersPaid } from "../lib/markOrdersPaid.js";
 import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
 import { isRegularProduct } from "../lib/productVisibility.js";
 import {
@@ -405,24 +406,13 @@ export default function CaixaPage() {
   };
 
   const markPaid = useMutation({
-    mutationFn: async ({ orderIds, paymentMethod, itemGroups }) => {
-      if (itemGroups?.length) {
-        return Promise.all(
-          itemGroups.map(({ orderId, itemIds }) =>
-            api.patch(`/orders/${orderId}/mark-paid`, {
-              paymentMethod,
-              itemIds,
-            }),
-          ),
-        );
-      }
-
-      return Promise.all(
-        orderIds.map((orderId) =>
-          api.patch(`/orders/${orderId}/mark-paid`, { paymentMethod }),
-        ),
-      );
-    },
+    mutationFn: async ({ orderIds, paymentMethod, itemGroups }) =>
+      markOrdersPaid(
+        itemGroups?.length
+          ? itemGroups
+          : orderIds.map((orderId) => ({ orderId })),
+        paymentMethod,
+      ),
     onSuccess: (_response, variables) => {
       if (variables?.selectedKeys?.length) {
         setSelectedItemIds((current) => {

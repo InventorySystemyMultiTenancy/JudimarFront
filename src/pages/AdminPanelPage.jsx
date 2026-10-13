@@ -11,6 +11,7 @@ import {
 } from "../lib/desktopNotifications.js";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api.js";
+import { markOrdersPaid } from "../lib/markOrdersPaid.js";
 import { askPaymentMethod } from "../lib/paymentMethodPrompt.js";
 import { compareOrdersByUrgency, getOrderEta } from "../lib/orderEta.js";
 import {
@@ -278,10 +279,9 @@ function AdminPanelPage() {
 
   const markSavedPendingPaid = useMutation({
     mutationFn: ({ orderIds, paymentMethod }) =>
-      Promise.all(
-        orderIds.map((orderId) =>
-          api.patch(`/orders/${orderId}/mark-paid`, { paymentMethod }),
-        ),
+      markOrdersPaid(
+        orderIds.map((orderId) => ({ orderId })),
+        paymentMethod,
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["caixa-pending-payments"] });
